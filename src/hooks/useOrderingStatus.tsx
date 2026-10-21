@@ -33,6 +33,8 @@ function playNotificationChime() {
   }
 }
 
+const TEN_MINUTES_MS = 10 * 60 * 1000;
+
 export function useOrderingStatus(flatId: string) {
   const supabase = createClient();
   const { profile, setActiveSession, setIsAddItemOpen } = useAppStore();
@@ -52,6 +54,21 @@ export function useOrderingStatus(flatId: string) {
         .maybeSingle();
 
       const s = (data as OrderingSession) ?? null;
+
+      // Auto-expire sessions older than 10 minutes without showing counter
+      if (s && s.started_at) {
+        const elapsed = Date.now() - new Date(s.started_at).getTime();
+        if (elapsed >= TEN_MINUTES_MS) {
+          await supabase
+            .from('ordering_sessions')
+            .update({ is_active: false, ended_at: new Date().toISOString() })
+            .eq('id', s.id);
+          setSession(null);
+          setActiveSession(null);
+          return;
+        }
+      }
+
       setSession(s);
       setActiveSession(s);
 
@@ -129,6 +146,37 @@ export function useOrderingStatus(flatId: string) {
       supabase.removeChannel(channel);
     };
   }, [flatId, fetchSession]);
+
+  // Auto-disappear ordering session after 10 minutes without showing counter
+  useEffect(() => {
+    if (!session?.started_at || !session.is_active) return;
+
+    const elapsed = Date.now() - new Date(session.started_at).getTime();
+    const remaining = TEN_MINUTES_MS - elapsed;
+
+    if (remaining <= 0) {
+      setSession(null);
+      setActiveSession(null);
+      supabase
+        .from('ordering_sessions')
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq('id', session.id)
+        .then(() => {});
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setSession(null);
+      setActiveSession(null);
+      supabase
+        .from('ordering_sessions')
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq('id', session.id)
+        .then(() => {});
+    }, remaining);
+
+    return () => clearTimeout(timer);
+  }, [session?.id, session?.started_at, session?.is_active, supabase, setActiveSession]);
 
   async function startOrdering(platform: Platform) {
     if (!profile) return;
