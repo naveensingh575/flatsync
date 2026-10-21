@@ -14,6 +14,7 @@ import { GroceryList } from '@/components/grocery/GroceryList';
 import { CategoryFilter } from '@/components/grocery/CategoryFilter';
 import { QuickAddChips } from '@/components/grocery/QuickAddChips';
 import { AddItemForm } from '@/components/grocery/AddItemForm';
+import { InlineQuickAdd } from '@/components/grocery/InlineQuickAdd';
 import { EditItemDrawer } from '@/components/grocery/EditItemDrawer';
 import { OrderingBanner } from '@/components/ordering/OrderingBanner';
 import { StartOrderDrawer } from '@/components/ordering/StartOrderDrawer';
@@ -103,8 +104,16 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <Header flat={flat} isConnected={isConnected} />
 
-      {/* Main scrollable body with bottom clearance for action dock */}
-      <main className="max-w-lg mx-auto space-y-3.5 pt-2 pb-40">
+      {/* Main scrollable body with bottom clearance for floating island dock */}
+      <main className="max-w-lg mx-auto space-y-3.5 pt-2 pb-28">
+        {/* Instant 1-Tap Inline Quick-Add */}
+        <InlineQuickAdd
+          onAdd={async (payload) => {
+            await addItem(payload);
+          }}
+          onOpenDrawer={() => setIsAddItemOpen(true)}
+        />
+
         {/* Ordering banner */}
         <OrderingBanner
           session={session}
@@ -214,44 +223,9 @@ export default function DashboardPage() {
             toast.success('Item removed');
           }}
           onEdit={(item) => setEditingItem(item)}
+          onQuickAdd={addItem}
         />
       </main>
-
-      {/* Mobile Action Dock above BottomNav with zero overlap */}
-      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-20 px-4 py-2.5 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 shadow-lg">
-        <div className="max-w-lg mx-auto flex items-center gap-2.5">
-          <Button
-            onClick={() => setIsAddItemOpen(true)}
-            variant="primary"
-            size="md"
-            className="flex-1 shadow-sm font-semibold text-sm h-11"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            Add Item to List
-          </Button>
-
-          {!isActiveSession ? (
-            <Button
-              onClick={() => setIsOrderDrawerOpen(true)}
-              variant="secondary"
-              size="md"
-              className="flex-1 shadow-sm font-semibold text-sm h-11 bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 border-0"
-            >
-              <ShoppingCart size={17} />
-              I&apos;m Ordering Now 🛒
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setIsChecklistOpen(true)}
-              variant="outline"
-              size="md"
-              className="flex-1 shadow-sm font-semibold text-xs h-11 border-emerald-500 text-emerald-600 dark:text-emerald-400"
-            >
-              📋 View Checklist
-            </Button>
-          )}
-        </div>
-      </div>
 
       {/* Drawers */}
       <AddItemForm
@@ -300,7 +274,15 @@ export default function DashboardPage() {
         onEndOrder={handleEndOrder}
       />
 
-      <BottomNav flatId={flatId} />
+      <BottomNav
+        flatId={flatId}
+        onAddItem={() => setIsAddItemOpen(true)}
+        onStartOrder={() => setIsOrderDrawerOpen(true)}
+        onViewChecklist={() => setIsChecklistOpen(true)}
+        isOrderingActive={isActiveSession}
+        inCartCount={items.filter((i) => i.status === 'in_cart').length}
+        totalCount={items.length}
+      />
     </div>
   );
 }

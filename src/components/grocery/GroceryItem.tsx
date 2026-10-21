@@ -100,10 +100,10 @@ export function GroceryItemCard({
         exit={{ opacity: 0, x: -80, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         className={cn(
-          'relative flex items-start gap-3 p-4 rounded-2xl border transition-colors',
+          'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-all duration-200 shadow-xs hover:shadow-sm',
           item.status === 'in_cart'
-            ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/50'
-            : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800',
+            ? 'bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-200/60 dark:border-emerald-800/40 opacity-90'
+            : 'bg-white dark:bg-zinc-900 border-zinc-200/70 dark:border-zinc-800/80',
           isOrderingMode && 'cursor-pointer active:scale-[0.98]'
         )}
         onClick={handleTap}
