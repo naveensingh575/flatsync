@@ -40,6 +40,21 @@ function OnboardingContent() {
     }
   }, [searchParams]);
 
+  // Guard: If an existing user who already belongs to a group lands on onboarding (e.g. relogin),
+  // automatically forward them to their active flat unless explicitly adding a new group or joining with a code
+  useEffect(() => {
+    const codeParam = searchParams.get('code');
+    const isExplicitNew = searchParams.get('new') === 'true';
+
+    if (!codeParam && !isExplicitNew && profile?.id) {
+      if (userGroups && userGroups.length > 0) {
+        router.replace(`/flat/${userGroups[0].id}`);
+      } else if (profile.flat_id) {
+        router.replace(`/flat/${profile.flat_id}`);
+      }
+    }
+  }, [searchParams, userGroups, profile, router]);
+
   const activeGroupType = GROUP_TYPES.find((g) => g.value === selectedType) || GROUP_TYPES[0];
 
   async function createGroup() {

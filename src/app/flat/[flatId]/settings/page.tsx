@@ -2,13 +2,11 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useFlat } from '@/hooks/useFlat';
-import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/useAppStore';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
-import { Button } from '@/components/ui/Button';
 import { GroupCard } from '@/components/groups/GroupCard';
-import { LogOut, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -16,7 +14,6 @@ export default function SettingsPage() {
   const flatId = (routeParams?.flatId as string) || '';
   const { flat, groupMembersMap, leaveGroup, deleteGroup } = useFlat(flatId);
   const { userGroups } = useAppStore();
-  const { signOut } = useAuth();
 
   async function handleLeaveGroup(groupId: string) {
     const success = await leaveGroup(groupId);
@@ -53,7 +50,7 @@ export default function SettingsPage() {
               </h3>
             </div>
             <button
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push('/onboarding?new=true')}
               className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline cursor-pointer"
             >
               <Plus size={14} /> Add Group
@@ -74,12 +71,6 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
-
-        {/* Sign out */}
-        <Button variant="danger" className="w-full" onClick={signOut}>
-          <LogOut size={16} />
-          Sign Out
-        </Button>
       </main>
 
       <BottomNav flatId={flatId} />

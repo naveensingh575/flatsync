@@ -51,7 +51,8 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/onboarding';
+    const hasCode = request.nextUrl.searchParams.has('code');
+    redirectUrl.pathname = hasCode ? '/onboarding' : '/';
     return NextResponse.redirect(redirectUrl);
   }
 
