@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Check, Users } from 'lucide-react';
-import { useAppStore } from '@/store/useAppStore';
+import { ChevronDown, Plus, Users, X } from 'lucide-react';
+import { useFlat } from '@/hooks/useFlat';
+import { GroupCard } from '@/components/groups/GroupCard';
 import { Flat } from '@/types/app.types';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +15,7 @@ interface GroupSwitcherProps {
 
 export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
   const router = useRouter();
-  const { userGroups } = useAppStore();
+  const { userGroups, groupMembersMap, leaveGroup, deleteGroup } = useFlat(currentFlat?.id);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,14 +33,43 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
   const currentIcon = currentFlat?.icon || '🛒';
   const displayName = currentFlat?.name || 'My Group';
 
+  async function handleLeaveGroup(groupId: string) {
+    const success = await leaveGroup(groupId);
+    if (success && groupId === currentFlat?.id) {
+      const remaining = userGroups.filter((g) => g.id !== groupId);
+      if (remaining.length > 0) {
+        router.push(`/flat/${remaining[0].id}`);
+      } else {
+        router.push('/onboarding');
+      }
+      setIsOpen(false);
+    }
+    return success;
+  }
+
+  async function handleDeleteGroup(groupId: string) {
+    const success = await deleteGroup(groupId);
+    if (success && groupId === currentFlat?.id) {
+      const remaining = userGroups.filter((g) => g.id !== groupId);
+      if (remaining.length > 0) {
+        router.push(`/flat/${remaining[0].id}`);
+      } else {
+        router.push('/onboarding');
+      }
+      setIsOpen(false);
+    }
+    return success;
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* Group Switcher Header Pill */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
       >
         <span className="text-xl flex-shrink-0">{currentIcon}</span>
-        <div className="flex flex-col min-w-0 max-w-[130px]">
+        <div className="flex flex-col min-w-0 max-w-[130px] sm:max-w-[160px]">
           <span className="font-bold text-sm text-zinc-900 dark:text-white truncate leading-tight">
             {displayName}
           </span>
@@ -58,67 +88,67 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
         />
       </button>
 
+      {/* Rich Groups Dropdown / Drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden"
+            className="absolute left-0 mt-2 w-80 sm:w-96 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-50 overflow-hidden"
           >
-            <div className="p-2 border-b border-zinc-100 dark:border-zinc-800">
-              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-2 py-1">
-                Your Groups
-              </p>
+            {/* Header */}
+            <div className="flex items-center justify-between p-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-850">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-emerald-500" />
+                <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
+                  Your Groups ({userGroups.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+              >
+                <X size={15} />
+              </button>
             </div>
 
-            <div className="max-h-60 overflow-y-auto p-1.5 space-y-1">
-              {userGroups.map((group) => {
-                const isSelected = group.id === currentFlat?.id;
-                return (
-                  <button
-                    key={group.id}
-                    onClick={() => {
-                      setIsOpen(false);
-                      router.push(`/flat/${group.id}`);
-                    }}
-                    className={cn(
-                      'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-sm transition-colors',
-                      isSelected
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium'
-                        : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <span className="text-lg">{group.icon || '👥'}</span>
-                      <div className="truncate">
-                        <p className="truncate leading-snug">{group.name}</p>
-                        <p className="text-[10px] text-zinc-400 font-mono">#{group.join_code}</p>
-                      </div>
-                    </div>
-                    {isSelected && <Check size={16} className="text-emerald-600 flex-shrink-0" />}
-                  </button>
-                );
-              })}
+            {/* Groups List */}
+            <div className="p-3 space-y-2.5 max-h-[65vh] overflow-y-auto">
+              {userGroups.map((group) => (
+                <GroupCard
+                  key={group.id}
+                  group={group}
+                  members={groupMembersMap[group.id] || []}
+                  isActive={group.id === currentFlat?.id}
+                  onSelectGroup={(id) => {
+                    setIsOpen(false);
+                    router.push(`/flat/${id}`);
+                  }}
+                  onLeaveGroup={handleLeaveGroup}
+                  onDeleteGroup={handleDeleteGroup}
+                />
+              ))}
 
               {userGroups.length === 0 && (
-                <div className="px-3 py-3 text-center text-xs text-zinc-400">
+                <div className="py-8 text-center text-xs text-zinc-400">
                   No other groups found
                 </div>
               )}
             </div>
 
-            <div className="p-1.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+            {/* Create or Join Group Footer */}
+            <div className="p-2.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
               <button
                 onClick={() => {
                   setIsOpen(false);
                   router.push('/onboarding');
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white transition-all shadow-xs cursor-pointer"
               >
-                <Plus size={15} />
-                Create or Join New Group
+                <Plus size={15} strokeWidth={2.5} />
+                <span>Create or Join New Group</span>
               </button>
             </div>
           </motion.div>

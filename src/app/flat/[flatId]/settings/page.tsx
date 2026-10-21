@@ -9,14 +9,15 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Copy, LogOut, Users, Plus, Check, Share2, MessageCircle } from 'lucide-react';
+import { GroupCard } from '@/components/groups/GroupCard';
+import { Copy, LogOut, Users, Plus, Share2, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const router = useRouter();
   const routeParams = useParams();
   const flatId = (routeParams?.flatId as string) || '';
-  const { flat, members } = useFlat(flatId);
+  const { flat, members, groupMembersMap, leaveGroup, deleteGroup } = useFlat(flatId);
   const { userGroups, profile } = useAppStore();
   const { signOut } = useAuth();
 
@@ -54,6 +55,26 @@ export default function SettingsPage() {
       navigator.clipboard.writeText(`${text}\n${joinUrl}`);
       toast.success('Invite link copied to clipboard!');
     }
+  }
+
+  async function handleLeaveGroup(groupId: string) {
+    const success = await leaveGroup(groupId);
+    if (success && groupId === flatId) {
+      const remaining = userGroups.filter((g) => g.id !== groupId);
+      if (remaining.length > 0) router.push(`/flat/${remaining[0].id}`);
+      else router.push('/onboarding');
+    }
+    return success;
+  }
+
+  async function handleDeleteGroup(groupId: string) {
+    const success = await deleteGroup(groupId);
+    if (success && groupId === flatId) {
+      const remaining = userGroups.filter((g) => g.id !== groupId);
+      if (remaining.length > 0) router.push(`/flat/${remaining[0].id}`);
+      else router.push('/onboarding');
+    }
+    return success;
   }
 
   return (
@@ -113,9 +134,9 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* All user groups */}
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
+        {/* All user groups with members & actions */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <span className="text-sm">🗂️</span>
               <h3 className="font-semibold text-zinc-900 dark:text-white">
@@ -124,44 +145,26 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={() => router.push('/onboarding')}
-              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline"
+              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 hover:underline cursor-pointer"
             >
               <Plus size={14} /> Add Group
             </button>
           </div>
 
-          <div className="space-y-1.5">
-            {userGroups.map((g) => {
-              const isCurrent = g.id === flatId;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => router.push(`/flat/${g.id}`)}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-colors ${
-                    isCurrent
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-medium'
-                      : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-lg">{g.icon || '👥'}</span>
-                    <div>
-                      <p className="text-sm leading-snug">{g.name}</p>
-                      <p className="text-[10px] text-zinc-400 font-mono">#{g.join_code}</p>
-                    </div>
-                  </div>
-                  {isCurrent ? (
-                    <span className="text-xs text-emerald-600 flex items-center gap-1">
-                      <Check size={14} /> Active
-                    </span>
-                  ) : (
-                    <span className="text-xs text-zinc-400">Switch →</span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="space-y-2.5">
+            {userGroups.map((g) => (
+              <GroupCard
+                key={g.id}
+                group={g}
+                members={groupMembersMap[g.id] || []}
+                isActive={g.id === flatId}
+                onSelectGroup={(id) => router.push(`/flat/${id}`)}
+                onLeaveGroup={handleLeaveGroup}
+                onDeleteGroup={handleDeleteGroup}
+              />
+            ))}
           </div>
-        </Card>
+        </div>
 
         {/* Members in current group with name and indicator */}
         <Card className="p-4 space-y-3">
