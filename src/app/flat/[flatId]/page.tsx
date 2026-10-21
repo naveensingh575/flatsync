@@ -1,6 +1,5 @@
 'use client';
 
-
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Plus, ShoppingCart } from 'lucide-react';
@@ -48,10 +47,11 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <Header flat={flat} />
 
-      <main className="max-w-lg mx-auto space-y-4 pt-2">
+      {/* Main scrollable body with ample bottom padding for docked buttons & bottom nav */}
+      <main className="max-w-lg mx-auto space-y-4 pt-2 pb-40">
         {/* Ordering banner */}
         <OrderingBanner
           session={session}
@@ -98,32 +98,41 @@ export default function DashboardPage() {
         />
       </main>
 
-      {/* FAB: Add Item */}
-      <motion.button
-        whileTap={{ scale: 0.92 }}
-        onClick={() => setIsAddItemOpen(true)}
-        className="fixed bottom-24 right-5 w-14 h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50 flex items-center justify-center z-30 transition-colors"
-      >
-        <Plus size={26} strokeWidth={2.5} />
-      </motion.button>
-
-      {/* Order Now button */}
-      {!isActiveSession && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto z-30"
-        >
+      {/* Mobile-First Action Bar: Docked above BottomNav with zero overlap */}
+      <div className="fixed bottom-16 left-0 right-0 z-20 px-4 py-2.5 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 shadow-lg">
+        <div className="max-w-lg mx-auto flex items-center gap-2.5">
           <Button
-            className="w-full shadow-lg"
-            size="lg"
-            onClick={() => setIsOrderDrawerOpen(true)}
+            onClick={() => setIsAddItemOpen(true)}
+            variant="primary"
+            size="md"
+            className="flex-1 shadow-sm font-semibold text-sm h-11"
           >
-            <ShoppingCart size={18} />
-            I'm Ordering Now 🛒
+            <Plus size={18} strokeWidth={2.5} />
+            Add Item to List
           </Button>
-        </motion.div>
-      )}
+
+          {!isActiveSession ? (
+            <Button
+              onClick={() => setIsOrderDrawerOpen(true)}
+              variant="secondary"
+              size="md"
+              className="flex-1 shadow-sm font-semibold text-sm h-11 bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-500 dark:hover:bg-amber-600 border-0"
+            >
+              <ShoppingCart size={17} />
+              I&apos;m Ordering Now 🛒
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setIsChecklistOpen(true)}
+              variant="outline"
+              size="md"
+              className="flex-1 shadow-sm font-semibold text-xs h-11 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+            >
+              📋 View Checklist
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Drawers */}
       <AddItemForm

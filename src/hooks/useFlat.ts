@@ -58,27 +58,56 @@ export function useFlat(flatId?: string) {
     }
 
     try {
-      const [flatRes, legacyMembersRes, junctionMembersRes] = await Promise.all([
+      const [flatRes, legacyMembersRes, junctionRows] = await Promise.all([
         supabase.from('flats').select('*').eq('id', flatId).maybeSingle(),
         supabase.from('profiles').select('*').eq('flat_id', flatId),
-        supabase
-          .from('group_members')
-          .select('user_id, profiles(*)')
-          .eq('group_id', flatId),
+        supabase.from('group_members').select('user_id, role').eq('group_id', flatId),
       ]);
 
       setFlat((flatRes.data as Flat) ?? null);
 
-      // Combine members from both sources, de-duplicated by ID
       const memberMap = new Map<string, Profile>();
 
+      // 1. Add legacy members from profiles.flat_id
       ((legacyMembersRes.data as Profile[]) ?? []).forEach((m) => {
-        if (m) memberMap.set(m.id, m);
+        if (m && m.id) {
+          memberMap.set(m.id, {
+            ...m,
+            name: m.name || 'Member',
+          });
+        }
       });
 
-      ((junctionMembersRes.data ?? []) as any[]).forEach((row) => {
-        if (row.profiles) memberMap.set(row.profiles.id, row.profiles as Profile);
-      });
+      // 2. Fetch profiles for all members in group_members
+      const junctionUserIds = (junctionRows.data ?? [])
+        .map((r: any) => r.user_id)
+        .filter(Boolean);
+
+      if (junctionUserIds.length > 0) {
+        const { data: junctionProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', junctionUserIds);
+
+        (junctionProfiles ?? []).forEach((p: Profile) => {
+          if (p && p.id) {
+            memberMap.set(p.id, {
+              ...p,
+              name: p.name || 'Member',
+            });
+          }
+        });
+      }
+
+      // 3. Ensure current profile is present if they belong to this group
+      if (profile?.id && profile.name) {
+        if (memberMap.has(profile.id)) {
+          const current = memberMap.get(profile.id)!;
+          memberMap.set(profile.id, { ...current, name: profile.name });
+        } else if (flatRes.data?.id === flatId) {
+          memberMap.set(profile.id, profile);
+        }
+      }
 
       setMembers(Array.from(memberMap.values()));
       setCurrentGroupId(flatId);
@@ -87,7 +116,7 @@ export function useFlat(flatId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [flatId, setCurrentGroupId]);
+  }, [flatId, profile, setCurrentGroupId]);
 
   useEffect(() => {
     fetchUserGroups();

@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const routeParams = useParams();
   const flatId = (routeParams?.flatId as string) || '';
   const { flat, members } = useFlat(flatId);
-  const { userGroups } = useAppStore();
+  const { userGroups, profile } = useAppStore();
   const { signOut } = useAuth();
 
   function copyCode() {
@@ -27,7 +27,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-28">
       <Header flat={flat} />
 
       <main className="max-w-lg mx-auto p-4 space-y-5 mt-2">
@@ -115,21 +115,36 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        {/* Members in current group */}
+        {/* Members in current group with name and indicator */}
         <Card className="p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Users size={16} className="text-zinc-400" />
             <h3 className="font-semibold text-zinc-900 dark:text-white">
-              Members ({members.length})
+              Group Members ({members.length})
             </h3>
           </div>
           <div className="space-y-2">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center gap-3">
-                <Avatar name={m.name} src={m.avatar_url} id={m.id} size="md" />
-                <p className="font-medium text-sm text-zinc-900 dark:text-white">{m.name}</p>
-              </div>
-            ))}
+            {members.map((m) => {
+              const isMe = m.id === profile?.id;
+              const displayName = m.name || (isMe ? profile?.name : null) || 'Member';
+              return (
+                <div key={m.id} className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={displayName} src={m.avatar_url} id={m.id} size="md" />
+                    <div>
+                      <p className="font-medium text-sm text-zinc-900 dark:text-white flex items-center gap-1.5">
+                        {displayName}
+                        {isMe && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            You
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
