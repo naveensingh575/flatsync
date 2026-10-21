@@ -54,16 +54,12 @@ export function OrderChecklistView({
       return;
     }
 
-    const lines = activeItems.map((item, idx) => {
-      const qty = item.quantity ? ` (${item.quantity})` : '';
-      const urgent = item.is_urgent ? ' [⚡ URGENT]' : '';
-      const forWho = item.for_user ? ` [For: ${item.for_user}]` : '';
-      const requester = item.requested_by?.name ? ` - by ${item.requested_by.name}` : '';
-      const checked = item.status === 'in_cart' ? '✅ ' : '⬜ ';
-      return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}${requester}`;
+    const lines = activeItems.map((item) => {
+      const qty = item.quantity?.trim() ? ` - ${item.quantity.trim()}` : '';
+      return `${item.item_name.trim()}${qty}`;
     });
 
-    const text = `🛒 GrocerySync Quick-Commerce List:\n${lines.join('\n')}\n\nGenerated via GrocerySync`;
+    const text = lines.join('\n');
     navigator.clipboard.writeText(text);
     if (!options?.silent) {
       toast.success('List copied! Ready to paste into Blinkit/Zepto 📋');

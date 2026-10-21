@@ -43,6 +43,8 @@ export function useGroceryList(flatId: string) {
 
   useEffect(() => {
     if (!flatId) return;
+    setLoading(true);
+    setItems([]);
     fetchItems();
 
     // Real-time subscription scoped to this flat's items with status monitoring
@@ -130,16 +132,23 @@ export function useGroceryList(flatId: string) {
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
         .single();
 
-      if (error && error.message.includes('for_user')) {
-        const { for_user, ...legacyPayload } = payload;
+      if (error) {
+        console.warn('Primary insert failed, attempting fallback:', error);
+        // Fallback: strip fields that might not exist in old schema
+        const fallbackPayload: any = {
+          item_name: payload.item_name,
+          category: payload.category,
+          flat_id: flatId,
+          requested_by_id: profile.id,
+          status: 'pending',
+        };
+        if (payload.quantity) fallbackPayload.quantity = payload.quantity;
+        if (payload.is_urgent !== undefined) fallbackPayload.is_urgent = payload.is_urgent;
+        if (payload.note) fallbackPayload.note = payload.note;
+
         const fallbackRes = await supabase
           .from('items')
-          .insert({
-            ...legacyPayload,
-            flat_id: flatId,
-            requested_by_id: profile.id,
-            status: 'pending',
-          })
+          .insert(fallbackPayload)
           .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
           .single();
 
@@ -147,6 +156,9 @@ export function useGroceryList(flatId: string) {
           setItems((prev) =>
             prev.map((i) => (i.id === tempId ? (fallbackRes.data as GroceryItem) : i))
           );
+        } else if (fallbackRes.error) {
+          console.error('Fallback insert failed:', fallbackRes.error);
+          toast.error(fallbackRes.error.message || 'Failed to add item to database');
         }
       } else if (data) {
         // Replace temporary item with confirmed row from database
@@ -154,10 +166,10 @@ export function useGroceryList(flatId: string) {
           prev.map((i) => (i.id === tempId ? (data as GroceryItem) : i))
         );
       }
-    } catch {
-      // Rollback on network failure
-      setItems((prev) => prev.filter((i) => i.id !== tempId));
-      toast.error('Network error: Failed to add item');
+    } catch (err: any) {
+      console.error('Network error adding item:', err);
+      // Keep optimistic item in state so user doesn't lose what they just typed
+      toast.error('Network error: item saved locally');
     }
   }
 

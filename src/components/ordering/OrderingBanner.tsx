@@ -67,14 +67,11 @@ export function OrderingBanner({
     // Copy active list to clipboard
     const active = items.filter((i) => i.status === 'pending' || i.status === 'in_cart');
     if (active.length > 0) {
-      const lines = active.map((item, idx) => {
-        const qty = item.quantity ? ` (${item.quantity})` : '';
-        const urgent = item.is_urgent ? ' [⚡ URGENT]' : '';
-        const forWho = item.for_user ? ` [For: ${item.for_user}]` : '';
-        const checked = item.status === 'in_cart' ? '✅ ' : '⬜ ';
-        return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}`;
+      const lines = active.map((item) => {
+        const qty = item.quantity?.trim() ? ` - ${item.quantity.trim()}` : '';
+        return `${item.item_name.trim()}${qty}`;
       });
-      navigator.clipboard.writeText(`🛒 GrocerySync List:\n${lines.join('\n')}\n\nGenerated via GrocerySync`);
+      navigator.clipboard.writeText(lines.join('\n'));
     }
     openQuickCommerceApp(session.platform);
     toast.success(`Opening ${appMeta?.name || session.platform} with list copied! 📋`, {
