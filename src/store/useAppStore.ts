@@ -1,12 +1,18 @@
 import { create } from 'zustand';
-import { GroceryItem, OrderingSession, Profile, Platform } from '@/types/app.types';
+import { GroceryItem, OrderingSession, Profile, Flat } from '@/types/app.types';
 
 interface AppState {
   // Current user profile
   profile: Profile | null;
   setProfile: (profile: Profile | null) => void;
 
-  // Active ordering session for this flat
+  // Multi-group state
+  userGroups: Flat[];
+  setUserGroups: (groups: Flat[]) => void;
+  currentGroupId: string | null;
+  setCurrentGroupId: (id: string | null) => void;
+
+  // Active ordering session for this group
   activeSession: OrderingSession | null;
   setActiveSession: (session: OrderingSession | null) => void;
 
@@ -34,6 +40,11 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   profile: null,
   setProfile: (profile) => set({ profile }),
+
+  userGroups: [],
+  setUserGroups: (userGroups) => set({ userGroups }),
+  currentGroupId: null,
+  setCurrentGroupId: (currentGroupId) => set({ currentGroupId }),
 
   activeSession: null,
   setActiveSession: (session) => set({ activeSession: session }),

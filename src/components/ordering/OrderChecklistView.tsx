@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, Package, IndianRupee, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ShoppingCart, Package, User } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { GroceryItem, ItemStatus } from '@/types/app.types';
-import { CATEGORY_COLORS, ITEM_CATEGORIES } from '@/lib/constants';
+import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface OrderChecklistViewProps {
@@ -64,6 +64,7 @@ export function OrderChecklistView({
             {items.map((item) => {
               const catMeta = ITEM_CATEGORIES.find((c) => c.value === item.category);
               const isInCart = item.status === 'in_cart';
+              const requester = item.requested_by?.name || 'Someone';
 
               return (
                 <motion.div
@@ -113,12 +114,20 @@ export function OrderChecklistView({
                       {item.is_urgent && (
                         <Badge variant="urgent" className="text-[10px] px-1.5 py-0">Urgent</Badge>
                       )}
+                      {item.for_user && (
+                        <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-1.5 py-0.5 rounded">
+                          For: {item.for_user}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {item.requested_by && (
-                    <Avatar name={item.requested_by.name} id={item.requested_by.id} size="sm" />
-                  )}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Avatar name={requester} id={item.requested_by_id} size="sm" />
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[70px] truncate">
+                      {requester}
+                    </span>
+                  </div>
                 </motion.div>
               );
             })}

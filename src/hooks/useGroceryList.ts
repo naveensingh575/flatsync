@@ -12,6 +12,7 @@ export function useGroceryList(flatId: string) {
   const [loading, setLoading] = useState(true);
 
   const fetchItems = useCallback(async () => {
+    if (!flatId) return;
     const { data } = await supabase
       .from('items')
       .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
@@ -40,13 +41,24 @@ export function useGroceryList(flatId: string) {
   }, [flatId, fetchItems]);
 
   async function addItem(payload: AddItemPayload) {
-    if (!profile) return;
-    await supabase.from('items').insert({
+    if (!profile?.id) return;
+    const { error } = await supabase.from('items').insert({
       ...payload,
       flat_id: flatId,
       requested_by_id: profile.id,
       status: 'pending',
     });
+
+    if (error && error.message.includes('for_user')) {
+      // Fallback if for_user column is not yet migrated in PostgreSQL
+      const { for_user, ...legacyPayload } = payload;
+      await supabase.from('items').insert({
+        ...legacyPayload,
+        flat_id: flatId,
+        requested_by_id: profile.id,
+        status: 'pending',
+      });
+    }
   }
 
   async function updateStatus(itemId: string, status: ItemStatus) {

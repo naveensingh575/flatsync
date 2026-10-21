@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Tag, Zap, AlignLeft, Hash } from 'lucide-react';
+import { Plus, Zap, User } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -22,6 +22,7 @@ const defaultState: AddItemPayload = {
   is_urgent: false,
   quantity: '',
   note: '',
+  for_user: '',
 };
 
 export function AddItemForm({ open, onClose, onAdd, prefill }: AddItemFormProps) {
@@ -37,7 +38,12 @@ export function AddItemForm({ open, onClose, onAdd, prefill }: AddItemFormProps)
     if (!form.item_name.trim()) { setError('Item name is required'); return; }
     setError('');
     setLoading(true);
-    await onAdd({ ...form, quantity: form.quantity || null, note: form.note || null });
+    await onAdd({
+      ...form,
+      quantity: form.quantity || null,
+      note: form.note || null,
+      for_user: form.for_user?.trim() || null,
+    });
     setForm({ ...defaultState });
     setLoading(false);
     onClose();
@@ -80,17 +86,24 @@ export function AddItemForm({ open, onClose, onAdd, prefill }: AddItemFormProps)
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Quantity"
-            placeholder="e.g. 2 packs"
+            placeholder="e.g. 2 packs, 1 kg"
             value={form.quantity ?? ''}
             onChange={(e) => set('quantity', e.target.value)}
           />
           <Input
-            label="Note"
-            placeholder="e.g. Amul only"
-            value={form.note ?? ''}
-            onChange={(e) => set('note', e.target.value)}
+            label="For person (optional)"
+            placeholder="e.g. Naveen, Mom, Alex"
+            value={form.for_user ?? ''}
+            onChange={(e) => set('for_user', e.target.value)}
           />
         </div>
+
+        <Input
+          label="Note (optional)"
+          placeholder="e.g. Brand preferences or replacement instructions"
+          value={form.note ?? ''}
+          onChange={(e) => set('note', e.target.value)}
+        />
 
         {/* Urgent toggle */}
         <button

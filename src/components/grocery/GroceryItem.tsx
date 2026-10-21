@@ -1,7 +1,7 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ShoppingCart, CheckCircle2, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import { GroceryItem, ItemStatus } from '@/types/app.types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -35,6 +35,8 @@ export function GroceryItemCard({
       onUpdateStatus(item.id, statusFlow[item.status]);
     }
   }
+
+  const requesterName = item.requested_by?.name || 'Someone';
 
   return (
     <motion.div
@@ -94,12 +96,14 @@ export function GroceryItemCard({
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
               className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-300 dark:text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
+              title="Remove item"
             >
               <Trash2 size={15} />
             </button>
           )}
         </div>
 
+        {/* Metadata badges row */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {/* Category badge */}
           <span className={cn(
@@ -123,13 +127,25 @@ export function GroceryItemCard({
             </Badge>
           )}
 
-          {/* Requester */}
-          {item.requested_by && (
-            <div className="flex items-center gap-1 ml-auto">
-              <Avatar name={item.requested_by.name} id={item.requested_by.id} size="sm" />
-              <span className="text-xs text-zinc-400">{timeAgo(item.created_at)}</span>
-            </div>
+          {/* For Person (if designated) */}
+          {item.for_user && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+              <User size={10} /> For: {item.for_user}
+            </span>
           )}
+        </div>
+
+        {/* Prominent Requester Attribution */}
+        <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Avatar name={requesterName} id={item.requested_by_id} size="sm" />
+            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 truncate">
+              {requesterName}
+            </span>
+          </div>
+          <span className="text-[11px] text-zinc-400 flex-shrink-0">
+            {timeAgo(item.created_at)}
+          </span>
         </div>
       </div>
     </motion.div>

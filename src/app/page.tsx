@@ -9,16 +9,30 @@ export default async function RootPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('flat_id')
-        .eq('id', user.id)
+      // 1. Check group_members junction table
+      const { data: memberRow } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', user.id)
+        .order('joined_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (profile?.flat_id) {
-        target = `/flat/${profile.flat_id}`;
+      if (memberRow?.group_id) {
+        target = `/flat/${memberRow.group_id}`;
       } else {
-        target = '/onboarding';
+        // 2. Fallback to legacy profiles.flat_id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('flat_id')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile?.flat_id) {
+          target = `/flat/${profile.flat_id}`;
+        } else {
+          target = '/onboarding';
+        }
       }
     }
   } catch {

@@ -1,66 +1,99 @@
 'use client';
 
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Plus, LogIn, Copy } from 'lucide-react';
+import { Plus, LogIn, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAppStore } from '@/store/useAppStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { generateJoinCode } from '@/lib/utils';
+import { generateJoinCode, cn } from '@/lib/utils';
+import { GROUP_TYPES } from '@/lib/constants';
+import { GroupType } from '@/types/app.types';
 import toast from 'react-hot-toast';
 
 type Mode = 'choose' | 'create' | 'join';
 
 export default function OnboardingPage() {
   const supabase = createClient();
-  const { profile } = useAppStore();
+  const { profile, userGroups } = useAppStore();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('choose');
-  const [flatName, setFlatName] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [selectedType, setSelectedType] = useState<GroupType>('flat');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function createFlat() {
-    if (!flatName.trim()) { toast.error('Enter a flat name'); return; }
+  const activeGroupType = GROUP_TYPES.find((g) => g.value === selectedType) || GROUP_TYPES[0];
+
+  async function createGroup() {
+    if (!groupName.trim()) { toast.error('Enter a group name'); return; }
+    if (!profile?.id) { toast.error('Please log in first'); return; }
     setLoading(true);
     try {
       const code = generateJoinCode();
-      const { data: flat, error } = await supabase
+      const { data: group, error } = await supabase
         .from('flats')
-        .insert({ name: flatName.trim(), join_code: code })
+        .insert({
+          name: groupName.trim(),
+          join_code: code,
+          group_type: selectedType,
+          icon: activeGroupType.emoji,
+        })
         .select()
         .single();
+
       if (error) throw error;
-      await supabase.from('profiles').update({ flat_id: flat.id }).eq('id', profile!.id);
-      toast.success(`Flat created! Code: ${code}`);
-      router.push(`/flat/${flat.id}`);
+
+      // Add to group_members junction table
+      await supabase.from('group_members').insert({
+        group_id: group.id,
+        user_id: profile.id,
+        role: 'admin',
+      });
+
+      // Update legacy profile.flat_id as default
+      await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+
+      toast.success(`${group.name} created! Code: ${code}`);
+      router.push(`/flat/${group.id}`);
     } catch (err: any) {
-      toast.error(err.message ?? 'Failed to create flat');
+      toast.error(err.message ?? 'Failed to create group');
     } finally {
       setLoading(false);
     }
   }
 
-  async function joinFlat() {
+  async function joinGroup() {
     const code = joinCode.trim().toUpperCase();
-    if (code.length !== 6) { toast.error('Enter a 6-character join code'); return; }
+    if (code.length !== 6) { toast.error('Enter a 6-character code'); return; }
+    if (!profile?.id) { toast.error('Please log in first'); return; }
     setLoading(true);
     try {
-      const { data: flat, error } = await supabase
+      const { data: group, error } = await supabase
         .from('flats')
         .select('*')
         .eq('join_code', code)
         .single();
-      if (error || !flat) throw new Error('Invalid join code. Check with your flatmate!');
-      await supabase.from('profiles').update({ flat_id: flat.id }).eq('id', profile!.id);
-      toast.success(`Joined ${flat.name}! 🏠`);
-      router.push(`/flat/${flat.id}`);
+
+      if (error || !group) throw new Error('Invalid code. Check with group members!');
+
+      // Add to group_members table
+      await supabase.from('group_members').upsert({
+        group_id: group.id,
+        user_id: profile.id,
+        role: 'member',
+      });
+
+      // Update legacy profile.flat_id
+      await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+
+      toast.success(`Joined ${group.name}! 🎉`);
+      router.push(`/flat/${group.id}`);
     } catch (err: any) {
-      toast.error(err.message ?? 'Failed to join flat');
+      toast.error(err.message ?? 'Failed to join group');
     } finally {
       setLoading(false);
     }
@@ -73,11 +106,26 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-sm space-y-6">
+        {userGroups.length > 0 && (
+          <button
+            onClick={() => router.push(`/flat/${userGroups[0].id}`)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+          >
+            <ArrowLeft size={14} /> Back to {userGroups[0].name}
+          </button>
+        )}
+
         <div className="text-center space-y-2">
-          <div className="text-5xl">🏠</div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Set Up Your Flat</h1>
+          <div className="text-5xl">{mode === 'create' ? activeGroupType.emoji : '👥'}</div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            {mode === 'choose' && 'Groups & Wishlists'}
+            {mode === 'create' && 'Create a New Group'}
+            {mode === 'join' && 'Join a Group'}
+          </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Hi {profile?.name ?? 'there'}! Create a new flat or join an existing one.
+            {mode === 'choose' && 'Organize groceries & quick-orders for flatmates, family, friends, or colleagues.'}
+            {mode === 'create' && 'Pick a group category and invite members with a code.'}
+            {mode === 'join' && 'Enter the 6-character code shared by your group.'}
           </p>
         </div>
 
@@ -91,10 +139,12 @@ export default function OnboardingPage() {
               onClick={() => setMode('create')}
               className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
             >
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">🏡</div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">
+                ✨
+              </div>
               <div>
-                <p className="font-semibold text-zinc-900 dark:text-white">Create a Flat</p>
-                <p className="text-sm text-zinc-400">Start fresh, invite your flatmates</p>
+                <p className="font-semibold text-zinc-900 dark:text-white">Create a Group</p>
+                <p className="text-sm text-zinc-400">Family, Flat, Friends, or Office</p>
               </div>
             </button>
 
@@ -102,10 +152,12 @@ export default function OnboardingPage() {
               onClick={() => setMode('join')}
               className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
             >
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-2xl">🔑</div>
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-2xl">
+                🔑
+              </div>
               <div>
-                <p className="font-semibold text-zinc-900 dark:text-white">Join a Flat</p>
-                <p className="text-sm text-zinc-400">Enter a 6-character code from your flatmate</p>
+                <p className="font-semibold text-zinc-900 dark:text-white">Join with Code</p>
+                <p className="text-sm text-zinc-400">Enter a 6-character invite code</p>
               </div>
             </button>
           </motion.div>
@@ -117,18 +169,50 @@ export default function OnboardingPage() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-4"
           >
-            <h2 className="font-semibold text-zinc-900 dark:text-white">Name Your Flat</h2>
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Group Type</label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {GROUP_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setSelectedType(type.value)}
+                    className={cn(
+                      'flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 text-xs font-medium transition-all',
+                      selectedType === type.value
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
+                    )}
+                  >
+                    <span className="text-xl">{type.emoji}</span>
+                    <span className="truncate">{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Input
-              placeholder="e.g. Tower B – 404, Koramangala Guys…"
-              value={flatName}
-              onChange={(e) => setFlatName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && createFlat()}
+              label="Group Name"
+              placeholder={
+                selectedType === 'flat' ? 'e.g. 404 Koramangala' :
+                selectedType === 'family' ? 'e.g. Home Groceries' :
+                selectedType === 'colleagues' ? 'e.g. Office Snack Stash' :
+                'e.g. Goa Trip Gang'
+              }
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && createGroup()}
               autoFocus
             />
-            <Button className="w-full" onClick={createFlat} loading={loading}>
-              <Plus size={18} /> Create Flat
+
+            <Button className="w-full" onClick={createGroup} loading={loading}>
+              <Plus size={18} /> Create {activeGroupType.label} Group
             </Button>
-            <button onClick={() => setMode('choose')} className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors">
+
+            <button
+              onClick={() => setMode('choose')}
+              className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+            >
               ← Back
             </button>
           </motion.div>
@@ -147,13 +231,16 @@ export default function OnboardingPage() {
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
               className="tracking-[0.4em] text-center font-mono text-lg uppercase"
-              onKeyDown={(e) => e.key === 'Enter' && joinFlat()}
+              onKeyDown={(e) => e.key === 'Enter' && joinGroup()}
               autoFocus
             />
-            <Button className="w-full" onClick={joinFlat} loading={loading}>
-              <LogIn size={18} /> Join Flat
+            <Button className="w-full" onClick={joinGroup} loading={loading}>
+              <LogIn size={18} /> Join Group
             </Button>
-            <button onClick={() => setMode('choose')} className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors">
+            <button
+              onClick={() => setMode('choose')}
+              className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+            >
               ← Back
             </button>
           </motion.div>

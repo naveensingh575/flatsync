@@ -10,12 +10,27 @@ export type ItemCategory =
 
 export type ItemStatus = 'pending' | 'in_cart' | 'purchased';
 export type Platform = 'blinkit' | 'zepto' | 'instamart' | 'other';
+export type GroupType = 'flat' | 'family' | 'friends' | 'colleagues' | 'trip' | 'other';
 
 export interface Flat {
   id: string;
   name: string;
   join_code: string;
+  group_type?: GroupType;
+  icon?: string;
   created_at: string;
+}
+
+// Alias Flat as Group for clear semantics
+export type Group = Flat;
+
+export interface GroupMember {
+  id: string;
+  group_id: string;
+  user_id: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+  profile?: Profile;
 }
 
 export interface Profile {
@@ -31,6 +46,7 @@ export interface GroceryItem {
   flat_id: string;
   requested_by_id: string;
   requested_by?: Profile;
+  for_user?: string | null;
   item_name: string;
   category: ItemCategory;
   is_urgent: boolean;
@@ -83,5 +99,5 @@ export interface Settlement {
 
 export type AddItemPayload = Pick<
   GroceryItem,
-  'item_name' | 'category' | 'is_urgent' | 'quantity' | 'note'
+  'item_name' | 'category' | 'is_urgent' | 'quantity' | 'note' | 'for_user'
 >;
