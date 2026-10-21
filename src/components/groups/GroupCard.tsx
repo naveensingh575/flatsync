@@ -49,19 +49,19 @@ export function GroupCard({
   function handleShareWhatsApp() {
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
     const joinUrl = `${siteUrl}/register?code=${group.join_code}`;
-    const message = `🛒 Join our "${group.name}" group on FlatSync to add groceries together:\n\n👉 ${joinUrl}\n\nInvite Code: ${group.join_code}`;
+    const message = `🛒 Join our "${group.name}" group on GrocerySync to add groceries together:\n\n👉 ${joinUrl}\n\nInvite Code: ${group.join_code}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   }
 
   async function handleShareLink() {
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
     const joinUrl = `${siteUrl}/register?code=${group.join_code}`;
-    const text = `Join our "${group.name}" group on FlatSync with code: ${group.join_code}`;
+    const text = `Join our "${group.name}" group on GrocerySync with code: ${group.join_code}`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${group.name} on FlatSync`,
+          title: `Join ${group.name} on GrocerySync`,
           text,
           url: joinUrl,
         });

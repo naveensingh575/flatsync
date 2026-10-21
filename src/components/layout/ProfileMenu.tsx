@@ -237,7 +237,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
     }
   }
 
-  // Refer / Share FlatSync helpers
+  // Refer / Share GrocerySync helpers
   function getReferralUrl() {
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
@@ -249,7 +249,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
     const regUrl = getReferralUrl();
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
     const groupText = activeGroup?.name ? ` to join "${activeGroup.name}"` : '';
-    const message = `🛒 FlatSync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
+    const message = `🛒 GrocerySync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   }
 
@@ -261,11 +261,11 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
 
   async function handleNativeReferralShare() {
     const regUrl = getReferralUrl();
-    const message = `🛒 FlatSync — Shared grocery dispatch with flatmates & family`;
+    const message = `🛒 GrocerySync — Shared grocery dispatch with friends, flatmates & family`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'FlatSync — Create Account',
+          title: 'GrocerySync — Create Account',
           text: message,
           url: regUrl,
         });
@@ -277,10 +277,10 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
     }
   }
 
-  // Rate FlatSync
+  // Rate GrocerySync
   function handleRateSubmit() {
     setShowRateModal(false);
-    toast.success(`Thank you for rating FlatSync ${rating} stars! ⭐🎉`);
+    toast.success(`Thank you for rating GrocerySync ${rating} stars! ⭐🎉`);
   }
 
   // Send Feedback
@@ -484,7 +484,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                   <ChevronRight size={14} className="text-zinc-400" />
                 </button>
 
-                {/* Refer FlatSync */}
+                {/* Refer GrocerySync */}
                 <button
                   onClick={() => {
                     setIsOpen(false);
@@ -494,14 +494,14 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                 >
                   <div className="flex items-center gap-2.5">
                     <Share2 size={15} className="text-emerald-500" />
-                    <span>Refer / Share FlatSync</span>
+                    <span>Refer / Share GrocerySync</span>
                   </div>
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
                     Invite
                   </span>
                 </button>
 
-                {/* Rate FlatSync */}
+                {/* Rate GrocerySync */}
                 <button
                   onClick={() => {
                     setIsOpen(false);
@@ -511,7 +511,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                 >
                   <div className="flex items-center gap-2.5">
                     <Star size={15} className="text-amber-500" />
-                    <span>Rate FlatSync</span>
+                    <span>Rate GrocerySync</span>
                   </div>
                   <span className="text-xs text-amber-500">★★★★★</span>
                 </button>
@@ -650,7 +650,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                       <div className="flex items-center gap-2">
                         <Share2 size={18} className="text-emerald-500" />
                         <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
-                          Refer / Share FlatSync
+                          Refer / Share GrocerySync
                         </h3>
                       </div>
                       <button
@@ -664,7 +664,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <div className="space-y-2 text-center py-1">
                       <span className="text-3xl">🎁</span>
                       <p className="text-xs text-zinc-600 dark:text-zinc-400 px-2 leading-relaxed">
-                        Share FlatSync with flatmates, family, or friends so everyone can add groceries together and order seamlessly!
+                        Share GrocerySync with flatmates, family, or friends so everyone can add groceries together and order seamlessly!
                       </p>
                     </div>
 
@@ -682,7 +682,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                         className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors cursor-pointer"
                       >
                         <Copy size={15} />
-                        <span>Copy FlatSync Link</span>
+                        <span>Copy GrocerySync Link</span>
                       </button>
 
                       <button
@@ -698,7 +698,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
               )}
             </AnimatePresence>
 
-            {/* Rate FlatSync Modal */}
+            {/* Rate GrocerySync Modal */}
             <AnimatePresence>
               {showRateModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
@@ -720,7 +720,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <div className="space-y-1">
                       <span className="text-4xl">⭐</span>
                       <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                        Rate FlatSync
+                        Rate GrocerySync
                       </h3>
                       <p className="text-xs text-zinc-400">
                         How much do you love dispatching groceries together?

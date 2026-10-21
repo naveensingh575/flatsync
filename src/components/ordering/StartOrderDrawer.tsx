@@ -29,7 +29,7 @@ export function StartOrderDrawer({ open, onClose, onStartOrder }: StartOrderDraw
     <Drawer open={open} onClose={onClose} title="I'm Ordering Now 🛒">
       <div className="p-5 space-y-5">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Select the quick-commerce app you're ordering on. Your flatmates will be notified instantly!
+          Select the quick-commerce app you're ordering on. Your group members will be notified instantly!
         </p>
 
         <div className="grid grid-cols-2 gap-3">

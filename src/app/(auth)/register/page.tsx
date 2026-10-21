@@ -53,7 +53,7 @@ function RegisterContent() {
       <div className="text-center space-y-2">
         <div className="text-5xl">🛒</div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Create Account</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 text-sm">Join your flat & grocery group</p>
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm">Join your group & sync groceries</p>
       </div>
 
       {code && (

@@ -239,7 +239,7 @@ export default function DashboardPage() {
         onClose={() => setIsOrderDrawerOpen(false)}
         onStartOrder={async (platform) => {
           await startOrdering(platform);
-          toast.success(`You're now ordering on ${platform}! Flatmates notified 🔔`);
+          toast.success(`You're now ordering on ${platform}! Group notified 🔔`);
           setIsChecklistOpen(true);
         }}
       />

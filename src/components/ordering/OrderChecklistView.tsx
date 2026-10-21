@@ -63,7 +63,7 @@ export function OrderChecklistView({
       return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}${requester}`;
     });
 
-    const text = `🛒 FlatSync Quick-Commerce List:\n${lines.join('\n')}\n\nGenerated via FlatSync`;
+    const text = `🛒 GrocerySync Quick-Commerce List:\n${lines.join('\n')}\n\nGenerated via GrocerySync`;
     navigator.clipboard.writeText(text);
     if (!options?.silent) {
       toast.success('List copied! Ready to paste into Blinkit/Zepto 📋');

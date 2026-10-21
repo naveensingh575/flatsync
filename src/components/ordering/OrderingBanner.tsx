@@ -74,7 +74,7 @@ export function OrderingBanner({
         const checked = item.status === 'in_cart' ? '✅ ' : '⬜ ';
         return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}`;
       });
-      navigator.clipboard.writeText(`🛒 FlatSync List:\n${lines.join('\n')}\n\nGenerated via FlatSync`);
+      navigator.clipboard.writeText(`🛒 GrocerySync List:\n${lines.join('\n')}\n\nGenerated via GrocerySync`);
     }
     openQuickCommerceApp(session.platform);
     toast.success(`Opening ${appMeta?.name || session.platform} with list copied! 📋`, {
@@ -104,7 +104,7 @@ export function OrderingBanner({
                   <span className="capitalize underline decoration-white/50">{session.platform}</span>!
                 </p>
                 <p className="text-white/80 text-[11px] truncate mt-0.5">
-                  {isMe ? 'Flatmates can add items before you checkout' : 'Need anything? Tap Add Item!'}
+                  {isMe ? 'Group members can add items before you checkout' : 'Need anything? Tap Add Item!'}
                 </p>
               </div>
             </div>

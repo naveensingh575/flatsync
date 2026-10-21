@@ -1,7 +1,7 @@
 {
-  "name": "FlatSync — Grocery & Quick Orders",
-  "short_name": "FlatSync",
-  "description": "Real-time shared grocery list for flatmates, family, and colleagues ordering on Blinkit, Zepto, and Instamart.",
+  "name": "GrocerySync — Shared Grocery & Quick Orders",
+  "short_name": "GrocerySync",
+  "description": "Real-time shared grocery list for groups, flatmates, family, and colleagues ordering on Blinkit, Zepto, and Instamart.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",

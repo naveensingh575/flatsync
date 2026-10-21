@@ -60,9 +60,9 @@ function LoginContent() {
       {/* Logo */}
       <div className="text-center space-y-2">
         <div className="text-5xl">🛒</div>
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">FlatSync</h1>
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">GrocerySync</h1>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-          Grocery sync for your flat
+          Shared grocery sync for groups & flats
         </p>
       </div>
 

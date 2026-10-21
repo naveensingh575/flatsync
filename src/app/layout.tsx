@@ -7,13 +7,13 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'FlatSync — Shared Grocery & Quick Orders',
-  description: 'Real-time shared grocery list for flatmates, family, and colleagues ordering on Blinkit, Zepto, and Instamart.',
+  title: 'GrocerySync — Shared Grocery & Quick Orders',
+  description: 'Real-time shared grocery list for groups, flatmates, family, and colleagues ordering on Blinkit, Zepto, and Instamart.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'FlatSync',
+    title: 'GrocerySync',
   },
   icons: {
     icon: '/icon.svg',

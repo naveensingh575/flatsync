@@ -182,7 +182,7 @@ export default function ProfilePage() {
     const regUrl = getReferralUrl();
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
     const groupText = activeGroup?.name ? ` to join "${activeGroup.name}"` : '';
-    const message = `🛒 FlatSync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
+    const message = `🛒 GrocerySync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   }
 
@@ -194,11 +194,11 @@ export default function ProfilePage() {
 
   async function handleNativeReferralShare() {
     const regUrl = getReferralUrl();
-    const message = `🛒 FlatSync — Shared grocery dispatch with flatmates & family`;
+    const message = `🛒 GrocerySync — Shared grocery dispatch with friends, flatmates & family`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'FlatSync — Create Account',
+          title: 'GrocerySync — Create Account',
           text: message,
           url: regUrl,
         });
@@ -330,7 +330,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-xs text-zinc-900 dark:text-white">Alerts</p>
-                  <p className="text-[11px] text-zinc-400 truncate">Lockscreen push when flatmates order</p>
+                  <p className="text-[11px] text-zinc-400 truncate">Lockscreen push when group orders</p>
                 </div>
               </div>
 
@@ -384,8 +384,8 @@ export default function ProfilePage() {
                   <Share2 size={15} />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Refer / Share FlatSync</p>
-                  <p className="text-[11px] text-zinc-400">Invite flatmates to register & join</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Refer / Share GrocerySync</p>
+                  <p className="text-[11px] text-zinc-400">Invite members to register & join</p>
                 </div>
               </div>
               <span className="text-zinc-400 text-xs">→</span>
@@ -416,7 +416,7 @@ export default function ProfilePage() {
                   <Star size={15} />
                 </div>
                 <div>
-                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Rate FlatSync</p>
+                  <p className="font-semibold text-xs text-zinc-900 dark:text-white">Rate GrocerySync</p>
                   <p className="text-[11px] text-zinc-400">Share your experience</p>
                 </div>
               </div>
@@ -549,7 +549,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Share2 size={18} className="text-emerald-500" />
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Refer FlatSync</h3>
+                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Refer GrocerySync</h3>
                 </div>
                 <button onClick={() => setShowReferModal(false)} className="text-zinc-400 hover:text-zinc-600">
                   <X size={16} />
@@ -557,7 +557,7 @@ export default function ProfilePage() {
               </div>
 
               <p className="text-xs text-zinc-500">
-                Share FlatSync with your flatmates or friends to sync groceries together.
+                Share GrocerySync with your flatmates, family, or friends to sync groceries together.
               </p>
 
               <div className="space-y-2">
@@ -590,7 +590,7 @@ export default function ProfilePage() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-5 border border-zinc-200 dark:border-zinc-800 shadow-2xl space-y-4 text-center"
             >
-              <h3 className="font-bold text-base text-zinc-900 dark:text-white">Rate FlatSync</h3>
+              <h3 className="font-bold text-base text-zinc-900 dark:text-white">Rate GrocerySync</h3>
               <p className="text-xs text-zinc-400">How would you rate your grocery collaboration experience?</p>
 
               <div className="flex justify-center gap-2 py-2">
