@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const [urgentOnly, setUrgentOnly] = useState(false);
 
   const { flat } = useFlat(flatId);
-  const { items, loading, addItem, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
+  const { items, loading, isConnected, addItem, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
   const { purchasedItems } = useHistory(flatId);
 
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <Header flat={flat} />
+      <Header flat={flat} isConnected={isConnected} />
 
       {/* Main scrollable body with bottom clearance for action dock */}
       <main className="max-w-lg mx-auto space-y-3.5 pt-2 pb-40">
@@ -94,7 +94,9 @@ export default function DashboardPage() {
         <OrderingBanner
           session={session}
           currentUserId={profile?.id}
+          items={items}
           onViewChecklist={() => setIsChecklistOpen(true)}
+          onQuickAdd={() => setIsAddItemOpen(true)}
         />
 
         {/* Live Search Bar & Urgent Chip */}
