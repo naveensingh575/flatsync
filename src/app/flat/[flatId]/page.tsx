@@ -6,13 +6,11 @@ import { Plus, ShoppingCart, Search, X, Zap } from 'lucide-react';
 import { useFlat } from '@/hooks/useFlat';
 import { useGroceryList } from '@/hooks/useGroceryList';
 import { useOrderingStatus } from '@/hooks/useOrderingStatus';
-import { useHistory } from '@/hooks/useHistory';
 import { useAppStore } from '@/store/useAppStore';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { GroceryList } from '@/components/grocery/GroceryList';
 import { CategoryFilter } from '@/components/grocery/CategoryFilter';
-import { QuickAddChips } from '@/components/grocery/QuickAddChips';
 import { AddItemForm } from '@/components/grocery/AddItemForm';
 import { EditItemDrawer } from '@/components/grocery/EditItemDrawer';
 import { OrderingBanner } from '@/components/ordering/OrderingBanner';
@@ -40,7 +38,6 @@ export default function DashboardPage() {
   const { flat } = useFlat(flatId);
   const { items, loading, isConnected, isOnline, addItem, addBatchItems, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
-  const { purchasedItems } = useHistory(flatId);
 
   const isActiveSession = !!session;
   const iAmOrdering = session?.buyer_id === profile?.id;
@@ -178,15 +175,6 @@ export default function DashboardPage() {
 
         {/* Category filter */}
         <CategoryFilter selected={selectedCategory} onChange={setSelectedCategory} />
-
-        {/* Quick re-add chips from purchase history */}
-        <QuickAddChips
-          recentItems={purchasedItems}
-          onQuickAdd={async (payload) => {
-            await addItem(payload);
-            toast.success(`${payload.item_name} added!`);
-          }}
-        />
 
         {/* Item count header */}
         <div className="flex items-center justify-between px-4">
