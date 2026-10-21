@@ -89,3 +89,58 @@ export function openQuickCommerceApp(platform: Platform): void {
     window.open(app.webFallback, '_blank');
   }
 }
+
+/**
+ * 1-Tap Item Search Deep-Link:
+ * Directly opens the quick-commerce app (or web store) into the search view for the specific grocery item.
+ * On mobile, attempts app deep-link first and falls back to the search page.
+ */
+export function searchItemInQuickCommerceApp(platform: Platform, itemName: string, quantity?: string | null): void {
+  const cleanName = itemName.trim();
+  const queryParam = encodeURIComponent(cleanName);
+
+  if (platform === 'blinkit') {
+    const webUrl = `https://blinkit.com/s/?q=${queryParam}`;
+    const appUri = `blinkit://search?q=${queryParam}`;
+    if (isMobileDevice()) {
+      window.location.href = appUri;
+      setTimeout(() => {
+        window.open(webUrl, '_blank');
+      }, 1400);
+    } else {
+      window.open(webUrl, '_blank');
+    }
+    return;
+  }
+
+  if (platform === 'zepto') {
+    const webUrl = `https://www.zeptonow.com/search?query=${queryParam}`;
+    const appUri = `zeptonow://search?query=${queryParam}`;
+    if (isMobileDevice()) {
+      window.location.href = appUri;
+      setTimeout(() => {
+        window.open(webUrl, '_blank');
+      }, 1400);
+    } else {
+      window.open(webUrl, '_blank');
+    }
+    return;
+  }
+
+  if (platform === 'instamart') {
+    const webUrl = `https://www.swiggy.com/instamart/search?query=${queryParam}`;
+    const appUri = `swiggy://instamart/search?query=${queryParam}`;
+    if (isMobileDevice()) {
+      window.location.href = appUri;
+      setTimeout(() => {
+        window.open(webUrl, '_blank');
+      }, 1400);
+    } else {
+      window.open(webUrl, '_blank');
+    }
+    return;
+  }
+
+  // Fallback Google search
+  window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanName + ' buy online')}`, '_blank');
+}

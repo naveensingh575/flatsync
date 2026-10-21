@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { GroceryItem, ItemStatus, Platform, AddItemPayload } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { QUICK_COMMERCE_APPS, openQuickCommerceApp } from '@/lib/quickCommerce';
+import { QUICK_COMMERCE_APPS, openQuickCommerceApp, searchItemInQuickCommerceApp } from '@/lib/quickCommerce';
 import toast from 'react-hot-toast';
 
 interface OrderChecklistViewProps {
@@ -272,8 +272,39 @@ export function OrderChecklistView({
                     </div>
                   </div>
 
-                  {/* Actions & Requester */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Actions: 1-Tap Search in App, OOS toggle, Requester Avatar */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* 1-Tap Search & Open in App */}
+                    {!isOos && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Copy item query + quantity to clipboard for fast paste/checking
+                          const itemQuery = item.quantity ? `${item.item_name} ${item.quantity}` : item.item_name;
+                          navigator.clipboard.writeText(itemQuery);
+                          // Auto-mark item as In Cart optimistically
+                          if (!isInCart) {
+                            onUpdateStatus(item.id, 'in_cart');
+                          }
+                          // Deep-link to search result in current platform
+                          searchItemInQuickCommerceApp(activePlatform, item.item_name, item.quantity);
+                          toast.success(`Searching "${item.item_name}" in ${currentApp.name}! (Marked in cart ✅)`, {
+                            icon: currentApp.emoji,
+                          });
+                        }}
+                        className={cn(
+                          'text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95',
+                          isInCart
+                            ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'
+                            : `${currentApp.bgClass} ${currentApp.borderClass}`
+                        )}
+                        title={`Search "${item.item_name}" directly in ${currentApp.name}`}
+                      >
+                        <span className="text-xs">{currentApp.emoji}</span>
+                        <span>Search</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -289,7 +320,7 @@ export function OrderChecklistView({
                         });
                       }}
                       className={cn(
-                        'text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors flex items-center gap-0.5 cursor-pointer',
+                        'text-[10px] font-bold px-1.5 py-1 rounded-lg border transition-colors flex items-center gap-0.5 cursor-pointer',
                         isOos
                           ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
                           : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
