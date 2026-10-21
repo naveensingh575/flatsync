@@ -22,7 +22,18 @@ export async function requestNotificationPermission(): Promise<boolean> {
   }
 }
 
+export function areAlertsEnabled(): boolean {
+  if (typeof window === 'undefined') return true;
+  return localStorage.getItem('ordering_alerts_enabled') !== 'false';
+}
+
+export function setAlertsEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('ordering_alerts_enabled', enabled ? 'true' : 'false');
+}
+
 export function sendOrderingAlertNotification(buyerName: string, platform: string): void {
+  if (!areAlertsEnabled()) return;
   if (!isNotificationSupported() || Notification.permission !== 'granted') return;
 
   try {

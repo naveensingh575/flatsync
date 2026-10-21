@@ -9,16 +9,18 @@ import {
   Laptop,
   Bell,
   BellRing,
-  WifiOff,
   KeyRound,
   Share2,
   Star,
   MessageSquare,
   LogOut,
   ChevronRight,
-  Users,
   Settings,
   X,
+  UserX,
+  AlertTriangle,
+  Copy,
+  MessageCircle,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -30,6 +32,8 @@ import {
   isNotificationSupported,
   getNotificationPermission,
   requestNotificationPermission,
+  areAlertsEnabled,
+  setAlertsEnabled,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -49,14 +53,17 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   const [isOpen, setIsOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>('system');
-  const [notifState, setNotifState] = useState<NotificationPermission>('default');
+  const [alertsEnabled, setAlertsEnabledState] = useState(true);
   const [notifSupported, setNotifSupported] = useState(false);
 
   // Sub-modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const [showReferModal, setShowReferModal] = useState(false);
 
   const [showRateModal, setShowRateModal] = useState(false);
   const [rating, setRating] = useState(5);
@@ -65,6 +72,9 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState<'bug' | 'feature' | 'general'>('feature');
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -88,7 +98,8 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
       else setThemeState('system');
 
       setNotifSupported(isNotificationSupported());
-      setNotifState(getNotificationPermission());
+      const hasPermission = getNotificationPermission() === 'granted';
+      setAlertsEnabledState(areAlertsEnabled() && hasPermission);
     }
 
     async function fetchUser() {
@@ -116,46 +127,86 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
     }
   }
 
-  // Notifications toggle
-  async function handleToggleNotifications() {
+  // Sliding Alerts toggle
+  async function handleToggleAlerts() {
     if (!notifSupported) {
       toast.error('Web notifications are not supported by this browser');
       return;
     }
 
-    if (notifState === 'granted') {
-      toast('Lockscreen notifications are active! 🔔', { icon: '🔔' });
-      return;
-    }
-
-    const granted = await requestNotificationPermission();
-    if (granted) {
-      setNotifState('granted');
-      toast.success('Lockscreen alerts enabled! You will be notified when flatmates order 🔔');
+    if (alertsEnabled) {
+      setAlertsEnabled(false);
+      setAlertsEnabledState(false);
+      toast.success('Ordering alerts disabled');
     } else {
-      setNotifState('denied');
-      toast.error('Notifications permission denied');
+      if (getNotificationPermission() === 'granted') {
+        setAlertsEnabled(true);
+        setAlertsEnabledState(true);
+        toast.success('Ordering alerts enabled! 🔔');
+      } else {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          setAlertsEnabled(true);
+          setAlertsEnabledState(true);
+          toast.success('Ordering alerts enabled! 🔔');
+        } else {
+          setAlertsEnabled(false);
+          setAlertsEnabledState(false);
+          toast.error('Notification permission was denied in browser settings');
+        }
+      }
     }
   }
 
-  // Change password
+  // Change password with existing password verification
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
+    if (!currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
     if (!newPassword || newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error('New password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      toast.error('New password must be different from current password');
       return;
     }
 
     setPasswordLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+      // 1. Verify existing password first
+      let emailToUse = userEmail;
+      if (!emailToUse) {
+        const { data: userData } = await supabase.auth.getUser();
+        emailToUse = userData?.user?.email || '';
+      }
+
+      if (emailToUse) {
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+          email: emailToUse,
+          password: currentPassword,
+        });
+
+        if (verifyError) {
+          toast.error('Current password is incorrect. Please try again.');
+          setPasswordLoading(false);
+          return;
+        }
+      }
+
+      // 2. Verified: Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
       toast.success('Password updated successfully! 🔐');
       setShowPasswordModal(false);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
@@ -165,20 +216,52 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
     }
   }
 
-  // Refer / Share FlatSync
-  function handleRefer() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
-    const message = `🛒 FlatSync is awesome for shared grocery runs with flatmates! Add items together, get live ordering alerts, and dispatch to Blinkit & Zepto:\n\n👉 ${siteUrl}`;
+  // Delete Account
+  async function handleDeleteAccount() {
+    setDeleteLoading(true);
+    try {
+      if (profile?.id) {
+        await supabase.from('group_members').delete().eq('user_id', profile.id);
+        await supabase.from('profiles').delete().eq('id', profile.id);
+      }
+      setShowDeleteModal(false);
+      await signOut();
+      toast.success('Your account has been deleted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete account');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
+  // Refer / Share FlatSync helpers
+  function handleShareReferralWhatsApp() {
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const message = `🛒 FlatSync makes shared grocery runs so easy! Add items together, get live ordering alerts, and dispatch to Blinkit & Zepto:\n\n👉 ${siteUrl}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+  }
+
+  function handleCopyReferralLink() {
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    navigator.clipboard.writeText(siteUrl);
+    toast.success('Referral link copied to clipboard! 📋');
+  }
+
+  async function handleNativeReferralShare() {
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const message = `🛒 FlatSync — Shared grocery dispatch with flatmates & family`;
     if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({
-        title: 'FlatSync — Shared Grocery Dispatch',
-        text: message,
-        url: siteUrl,
-      }).catch(() => {});
+      try {
+        await navigator.share({
+          title: 'FlatSync',
+          text: message,
+          url: siteUrl,
+        });
+      } catch {
+        // User dismissed share dialog
+      }
     } else {
-      navigator.clipboard.writeText(`${message}`);
-      toast.success('Referral link copied to clipboard! 📋');
+      handleCopyReferralLink();
     }
   }
 
@@ -232,18 +315,24 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-50 overflow-hidden"
+            className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl z-50 flex flex-col max-h-[82vh] overflow-hidden"
           >
-            {/* 1. Profile Header Card */}
-            <div className="p-4 bg-gradient-to-br from-zinc-50 to-zinc-100/70 dark:from-zinc-900 dark:to-zinc-850 border-b border-zinc-100 dark:border-zinc-800">
+            {/* 1. Profile Header Card with 🟢 Live Badge next to username */}
+            <div className="p-4 bg-gradient-to-br from-zinc-50 to-zinc-100/70 dark:from-zinc-900 dark:to-zinc-850 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Avatar name={profile.name} src={profile.avatar_url} id={profile.id} size="lg" />
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white truncate">
-                    {profile.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                      {profile.name}
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60 flex items-center gap-1 flex-shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Live
+                    </span>
+                  </div>
                   {userEmail ? (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
                       {userEmail}
                     </p>
                   ) : (
@@ -255,44 +344,9 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
               </div>
             </div>
 
-            <div className="p-3 space-y-3 max-h-[75vh] overflow-y-auto">
-              {/* 2. Live Connection & Sync Status Card */}
-              <div
-                className={cn(
-                  'p-3 rounded-2xl border flex items-center justify-between text-xs',
-                  !isOnline
-                    ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-                    : isConnected
-                    ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200'
-                    : 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
-                )}
-              >
-                <div className="flex items-center gap-2.5">
-                  {!isOnline ? (
-                    <WifiOff size={16} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                  ) : (
-                    <span
-                      className={cn(
-                        'w-2.5 h-2.5 rounded-full flex-shrink-0',
-                        isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
-                      )}
-                    />
-                  )}
-                  <div>
-                    <p className="font-bold leading-tight">
-                      {!isOnline ? 'Offline Queue Active' : isConnected ? 'Live Real-Time Sync' : 'Reconnecting...'}
-                    </p>
-                    <p className="text-[10px] opacity-75 mt-0.5">
-                      {!isOnline ? 'Actions queued safely in storage' : isConnected ? 'Instant flatmate updates' : 'Restoring connection'}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/70 dark:bg-zinc-900/60 border border-current/20 flex-shrink-0">
-                  {!isOnline ? '📴 Offline' : isConnected ? '🟢 Live' : '⏳ Syncing'}
-                </span>
-              </div>
-
-              {/* 3. Preferences Section (Theme & Notifications) */}
+            {/* Scrollable Menu Body */}
+            <div className="p-3 space-y-3 flex-1 overflow-y-auto overscroll-contain pb-6">
+              {/* Preferences Section: Theme & Sliding Alerts */}
               <div className="space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-1">
                   Preferences
@@ -307,7 +361,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <button
                       onClick={() => handleSetTheme('light')}
                       className={cn(
-                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1',
+                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer',
                         theme === 'light'
                           ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white'
                           : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -319,7 +373,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <button
                       onClick={() => handleSetTheme('dark')}
                       className={cn(
-                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1',
+                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer',
                         theme === 'dark'
                           ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white'
                           : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -331,7 +385,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <button
                       onClick={() => handleSetTheme('system')}
                       className={cn(
-                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1',
+                        'p-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1 cursor-pointer',
                         theme === 'system'
                           ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white'
                           : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
@@ -343,38 +397,44 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                   </div>
                 </div>
 
-                {/* Lockscreen Notifications Toggle */}
-                {notifSupported && (
-                  <div className="flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-                        {notifState === 'granted' ? <BellRing size={14} /> : <Bell size={14} />}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                          Ordering Alerts
-                        </p>
-                        <p className="text-[10px] text-zinc-400">
-                          Lockscreen push when flatmates order
-                        </p>
-                      </div>
+                {/* Alerts with Sliding Toggle Switch */}
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                      {alertsEnabled ? <BellRing size={14} /> : <Bell size={14} />}
                     </div>
-                    <button
-                      onClick={handleToggleNotifications}
-                      className={cn(
-                        'px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer',
-                        notifState === 'granted'
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300'
-                      )}
-                    >
-                      {notifState === 'granted' ? 'Enabled' : 'Enable'}
-                    </button>
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                        Alerts
+                      </p>
+                      <p className="text-[10px] text-zinc-400">
+                        Lockscreen push when flatmates order
+                      </p>
+                    </div>
                   </div>
-                )}
+
+                  {/* Sliding Enable/Disable Toggle */}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={alertsEnabled}
+                    onClick={handleToggleAlerts}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+                      alertsEnabled ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out',
+                        alertsEnabled ? 'translate-x-5' : 'translate-x-0'
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
 
-              {/* 4. Account & Community Actions */}
+              {/* Account & App Actions */}
               <div className="space-y-1 pt-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-1">
                   Account & App
@@ -387,7 +447,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                       setIsOpen(false);
                       router.push(`/flat/${flatId}/settings`);
                     }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors border border-zinc-100 dark:border-zinc-800"
+                    className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors border border-zinc-100 dark:border-zinc-800 cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       <Settings size={15} className="text-emerald-500" />
@@ -403,7 +463,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     setIsOpen(false);
                     setShowPasswordModal(true);
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors"
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <KeyRound size={15} className="text-zinc-400" />
@@ -416,9 +476,9 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    handleRefer();
+                    setShowReferModal(true);
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors"
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <Share2 size={15} className="text-emerald-500" />
@@ -435,7 +495,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     setIsOpen(false);
                     setShowRateModal(true);
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors"
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <Star size={15} className="text-amber-500" />
@@ -450,7 +510,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     setIsOpen(false);
                     setShowFeedbackModal(true);
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors"
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <MessageSquare size={15} className="text-sky-500" />
@@ -460,17 +520,28 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                 </button>
               </div>
 
-              {/* 5. Sign Out */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              {/* Bottom Actions: Sign Out & Delete Account */}
+              <div className="pt-2 border-t border-zinc-150 dark:border-zinc-800/80 space-y-1">
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     signOut();
                   }}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                 >
                   <LogOut size={14} />
                   <span>Sign Out</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setShowDeleteModal(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 p-2 rounded-2xl text-[11px] font-medium text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                >
+                  <UserX size={13} />
+                  <span>Delete Account</span>
                 </button>
               </div>
             </div>
@@ -478,15 +549,15 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
         )}
       </AnimatePresence>
 
-      {/* Change Password Modal */}
+      {/* Change Password Modal (Verified with Existing Password) */}
       <AnimatePresence>
         {showPasswordModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4"
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
                 <div className="flex items-center gap-2">
@@ -495,13 +566,21 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                 </div>
                 <button
                   onClick={() => setShowPasswordModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   <X size={16} />
                 </button>
               </div>
 
               <form onSubmit={handleChangePassword} className="space-y-3">
+                <Input
+                  label="Current Password"
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                />
                 <Input
                   label="New Password"
                   type="password"
@@ -532,7 +611,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     className="flex-1"
                     disabled={passwordLoading}
                   >
-                    {passwordLoading ? 'Updating...' : 'Save Password'}
+                    {passwordLoading ? 'Verifying...' : 'Save Password'}
                   </Button>
                 </div>
               </form>
@@ -541,20 +620,82 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
         )}
       </AnimatePresence>
 
-      {/* Rate FlatSync Modal */}
+      {/* Refer FlatSync Modal */}
       <AnimatePresence>
-        {showRateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+        {showReferModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl text-center space-y-4"
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Share2 size={18} className="text-emerald-500" />
+                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
+                    Refer / Share FlatSync
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowReferModal(false)}
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-2 text-center py-1">
+                <span className="text-3xl">🎁</span>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 px-2 leading-relaxed">
+                  Share FlatSync with flatmates, family, or friends so everyone can add groceries together and order seamlessly!
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <button
+                  onClick={handleShareReferralWhatsApp}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  <MessageCircle size={15} />
+                  <span>Share via WhatsApp</span>
+                </button>
+
+                <button
+                  onClick={handleCopyReferralLink}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  <Copy size={15} />
+                  <span>Copy FlatSync Link</span>
+                </button>
+
+                <button
+                  onClick={handleNativeReferralShare}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-850 hover:bg-zinc-100 text-zinc-600 dark:text-zinc-300 font-semibold text-xs border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer"
+                >
+                  <Share2 size={15} />
+                  <span>More Sharing Options...</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Rate FlatSync Modal */}
+      <AnimatePresence>
+        {showRateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl text-center space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
             >
               <div className="flex justify-end">
                 <button
                   onClick={() => setShowRateModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -563,7 +704,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
               <div className="space-y-1">
                 <span className="text-4xl">⭐</span>
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  Rate your FlatSync Experience
+                  Rate FlatSync
                 </h3>
                 <p className="text-xs text-zinc-400">
                   How much do you love dispatching groceries together?
@@ -603,23 +744,23 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
       {/* Feedback Modal */}
       <AnimatePresence>
         {showFeedbackModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4"
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
             >
               <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare size={18} className="text-sky-500" />
                   <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
-                    Send Us Feedback
+                    Send Feedback
                   </h3>
                 </div>
                 <button
                   onClick={() => setShowFeedbackModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -670,6 +811,62 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Account Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/60 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
+            >
+              <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle size={18} />
+                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Delete Account</h3>
+                </div>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
+                <p className="font-semibold text-zinc-800 dark:text-zinc-200">
+                  Are you sure you want to permanently delete your account?
+                </p>
+                <p>
+                  This will remove you from all your groups and clear your profile data. This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  className="flex-1"
+                  disabled={deleteLoading}
+                  onClick={handleDeleteAccount}
+                >
+                  {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
+                </Button>
+              </div>
             </motion.div>
           </div>
         )}
