@@ -1,10 +1,12 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Zap, Clock, Plus } from 'lucide-react';
+import { ShoppingCart, Zap, Clock, Plus, ExternalLink } from 'lucide-react';
 import { OrderingSession, GroceryItem } from '@/types/app.types';
 import { PLATFORMS } from '@/lib/constants';
 import { timeAgo } from '@/lib/utils';
+import { QUICK_COMMERCE_APPS, openQuickCommerceApp } from '@/lib/quickCommerce';
+import toast from 'react-hot-toast';
 
 interface OrderingBannerProps {
   session: OrderingSession | null;
@@ -23,10 +25,31 @@ export function OrderingBanner({
 }: OrderingBannerProps) {
   const platform = PLATFORMS.find((p) => p.value === session?.platform);
   const isMe = session?.buyer_id === currentUserId;
+  const appMeta = session?.platform && session.platform !== 'other' ? QUICK_COMMERCE_APPS[session.platform] : null;
 
   const inCartCount = items.filter((i) => i.status === 'in_cart').length;
   const totalCount = items.length;
   const percent = totalCount > 0 ? Math.round((inCartCount / totalCount) * 100) : 0;
+
+  function handleLaunchFromBanner() {
+    if (!session) return;
+    // Copy active list to clipboard
+    const active = items.filter((i) => i.status === 'pending' || i.status === 'in_cart');
+    if (active.length > 0) {
+      const lines = active.map((item, idx) => {
+        const qty = item.quantity ? ` (${item.quantity})` : '';
+        const urgent = item.is_urgent ? ' [⚡ URGENT]' : '';
+        const forWho = item.for_user ? ` [For: ${item.for_user}]` : '';
+        const checked = item.status === 'in_cart' ? '✅ ' : '⬜ ';
+        return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}`;
+      });
+      navigator.clipboard.writeText(`🛒 FlatSync List:\n${lines.join('\n')}\n\nGenerated via FlatSync`);
+    }
+    openQuickCommerceApp(session.platform);
+    toast.success(`Opening ${appMeta?.name || session.platform} with list copied! 📋`, {
+      icon: appMeta?.emoji || '🚀',
+    });
+  }
 
   return (
     <AnimatePresence>
@@ -57,13 +80,23 @@ export function OrderingBanner({
               </div>
 
               {isMe ? (
-                <button
-                  onClick={onViewChecklist}
-                  className="flex items-center gap-1 bg-white/25 hover:bg-white/35 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors flex-shrink-0 shadow-sm"
-                >
-                  <Zap size={13} />
-                  Checklist
-                </button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={handleLaunchFromBanner}
+                    className="flex items-center gap-1 bg-white text-zinc-900 text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-sm hover:bg-zinc-100 transition-transform active:scale-95"
+                    title={`Open ${appMeta?.name || session.platform} app`}
+                  >
+                    <span>{appMeta?.emoji || '🚀'}</span>
+                    <span>Open App</span>
+                  </button>
+                  <button
+                    onClick={onViewChecklist}
+                    className="flex items-center gap-1 bg-white/25 hover:bg-white/35 text-white text-xs font-semibold px-2.5 py-1.5 rounded-xl transition-colors shadow-sm"
+                  >
+                    <Zap size={13} />
+                    Checklist
+                  </button>
+                </div>
               ) : onQuickAdd ? (
                 <button
                   onClick={onQuickAdd}

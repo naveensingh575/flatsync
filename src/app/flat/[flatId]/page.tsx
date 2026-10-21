@@ -253,6 +253,7 @@ export default function DashboardPage() {
         open={isChecklistOpen}
         onClose={() => setIsChecklistOpen(false)}
         items={items}
+        platform={session?.platform}
         onUpdateStatus={updateStatus}
         onEndOrder={handleEndOrder}
       />

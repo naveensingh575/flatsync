@@ -1,22 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, Package, Copy } from 'lucide-react';
+import { CheckCircle2, Package, Copy, ExternalLink, ArrowUpRight } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { GroceryItem, ItemStatus } from '@/types/app.types';
+import { GroceryItem, ItemStatus, Platform } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { QUICK_COMMERCE_APPS, openQuickCommerceApp } from '@/lib/quickCommerce';
 import toast from 'react-hot-toast';
 
 interface OrderChecklistViewProps {
   open: boolean;
   onClose: () => void;
   items: GroceryItem[];
+  platform?: Platform;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onEndOrder: (total?: number) => Promise<void>;
 }
@@ -25,19 +27,27 @@ export function OrderChecklistView({
   open,
   onClose,
   items,
+  platform,
   onUpdateStatus,
   onEndOrder,
 }: OrderChecklistViewProps) {
   const [totalAmount, setTotalAmount] = useState('');
   const [ending, setEnding] = useState(false);
+  const [activePlatform, setActivePlatform] = useState<Platform>(platform || 'blinkit');
+
+  useEffect(() => {
+    if (platform && platform !== 'other') {
+      setActivePlatform(platform);
+    }
+  }, [platform]);
 
   const inCartCount = items.filter((i) => i.status === 'in_cart').length;
   const pendingCount = items.filter((i) => i.status === 'pending').length;
 
-  function copyFormattedList() {
+  function copyFormattedList(options?: { silent?: boolean }) {
     const activeItems = items.filter((i) => i.status === 'pending' || i.status === 'in_cart');
     if (activeItems.length === 0) {
-      toast.error('No items to copy');
+      if (!options?.silent) toast.error('No items to copy');
       return;
     }
 
@@ -52,7 +62,20 @@ export function OrderChecklistView({
 
     const text = `🛒 FlatSync Quick-Commerce List:\n${lines.join('\n')}\n\nGenerated via FlatSync`;
     navigator.clipboard.writeText(text);
-    toast.success('List copied! Ready to paste into Blinkit/Zepto 📋');
+    if (!options?.silent) {
+      toast.success('List copied! Ready to paste into Blinkit/Zepto 📋');
+    }
+  }
+
+  function handleLaunchApp(targetPlatform: Platform) {
+    // 1. Copy list to clipboard so user can paste immediately in app search/chat
+    copyFormattedList({ silent: true });
+    // 2. Deep-link or open web fallback
+    openQuickCommerceApp(targetPlatform);
+    const appMeta = QUICK_COMMERCE_APPS[targetPlatform as keyof typeof QUICK_COMMERCE_APPS];
+    toast.success(`Opening ${appMeta?.name || targetPlatform} with list copied! 📋`, {
+      icon: appMeta?.emoji || '🚀',
+    });
   }
 
   async function handleEnd() {
@@ -62,15 +85,69 @@ export function OrderChecklistView({
     onClose();
   }
 
+  const currentApp = QUICK_COMMERCE_APPS[activePlatform as keyof typeof QUICK_COMMERCE_APPS] || QUICK_COMMERCE_APPS.blinkit;
+
   return (
     <Drawer open={open} onClose={onClose} title="Order Checklist 📋" className="max-h-[95vh]">
       <div className="p-4 space-y-4">
-        {/* Progress bar & Copy button row */}
+        {/* 1-Tap Quick Commerce App Launcher */}
         <div className="space-y-2">
+          <button
+            onClick={() => handleLaunchApp(activePlatform)}
+            className={cn(
+              'w-full flex items-center justify-between p-3.5 rounded-2xl shadow-sm transition-transform active:scale-[0.99] border cursor-pointer',
+              currentApp.bgClass,
+              currentApp.borderClass
+            )}
+          >
+            <div className="flex items-center gap-3 text-left">
+              <span className="text-2xl">{currentApp.emoji}</span>
+              <div>
+                <div className="flex items-center gap-1.5 leading-tight">
+                  <span className="text-base font-extrabold tracking-tight">Open {currentApp.name}</span>
+                  <ArrowUpRight size={16} strokeWidth={2.5} />
+                </div>
+                <p className="text-[11px] opacity-90 font-medium mt-0.5">
+                  1-tap app launch · list auto-copied to clipboard
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] px-2.5 py-1 rounded-lg bg-black/15 font-bold uppercase tracking-wider flex-shrink-0">
+              Launch
+            </span>
+          </button>
+
+          {/* Quick Platform Switcher Pills */}
+          <div className="flex items-center gap-1.5 pt-0.5 px-0.5">
+            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mr-0.5">Switch:</span>
+            {(['blinkit', 'zepto', 'instamart'] as const).map((p) => {
+              const app = QUICK_COMMERCE_APPS[p];
+              const isSelected = activePlatform === p;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setActivePlatform(p)}
+                  className={cn(
+                    'text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1',
+                    isSelected
+                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  )}
+                >
+                  <span>{app.emoji}</span>
+                  <span>{app.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Progress bar & Copy button row */}
+        <div className="space-y-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
             <span>{inCartCount} in cart · {pendingCount} pending</span>
             <button
-              onClick={copyFormattedList}
+              onClick={() => copyFormattedList()}
               className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg"
               title="Copy formatted text list"
             >
