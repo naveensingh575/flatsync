@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-emerald-50: oklch(97.7% 0.021 150);
+  --color-emerald-100: oklch(95% 0.045 150);
+  --color-emerald-500: oklch(69% 0.17 150);
+  --color-emerald-600: oklch(62% 0.18 150);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    transition: background-color 0.2s, color 0.2s;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
