@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User } from 'lucide-react';
+import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User, Pencil } from 'lucide-react';
 import { GroceryItem, ItemStatus } from '@/types/app.types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -12,6 +12,7 @@ interface GroceryItemCardProps {
   item: GroceryItem;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onDelete: (id: string) => void;
+  onEdit?: (item: GroceryItem) => void;
   isOrderingMode?: boolean;
 }
 
@@ -25,6 +26,7 @@ export function GroceryItemCard({
   item,
   onUpdateStatus,
   onDelete,
+  onEdit,
   isOrderingMode,
 }: GroceryItemCardProps) {
   const catMeta = ITEM_CATEGORIES.find((c) => c.value === item.category);
@@ -91,15 +93,26 @@ export function GroceryItemCard({
             )}
           </div>
 
-          {/* Delete button – only in normal mode */}
+          {/* Edit and Delete buttons – only in normal mode */}
           {!isOrderingMode && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-              className="p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-300 dark:text-zinc-600 hover:text-red-400 transition-colors flex-shrink-0"
-              title="Remove item"
-            >
-              <Trash2 size={15} />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {onEdit && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                  className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                  title="Edit item"
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-300 dark:text-zinc-600 hover:text-red-400 transition-colors"
+                title="Remove item"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           )}
         </div>
 

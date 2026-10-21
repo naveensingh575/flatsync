@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, ShoppingCart, Package, User } from 'lucide-react';
+import { CheckCircle2, Package, Copy } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { GroceryItem, ItemStatus } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface OrderChecklistViewProps {
   open: boolean;
@@ -33,6 +34,27 @@ export function OrderChecklistView({
   const inCartCount = items.filter((i) => i.status === 'in_cart').length;
   const pendingCount = items.filter((i) => i.status === 'pending').length;
 
+  function copyFormattedList() {
+    const activeItems = items.filter((i) => i.status === 'pending' || i.status === 'in_cart');
+    if (activeItems.length === 0) {
+      toast.error('No items to copy');
+      return;
+    }
+
+    const lines = activeItems.map((item, idx) => {
+      const qty = item.quantity ? ` (${item.quantity})` : '';
+      const urgent = item.is_urgent ? ' [⚡ URGENT]' : '';
+      const forWho = item.for_user ? ` [For: ${item.for_user}]` : '';
+      const requester = item.requested_by?.name ? ` - by ${item.requested_by.name}` : '';
+      const checked = item.status === 'in_cart' ? '✅ ' : '⬜ ';
+      return `${checked}${idx + 1}. ${item.item_name}${qty}${urgent}${forWho}${requester}`;
+    });
+
+    const text = `🛒 FlatSync Quick-Commerce List:\n${lines.join('\n')}\n\nGenerated via FlatSync`;
+    navigator.clipboard.writeText(text);
+    toast.success('List copied! Ready to paste into Blinkit/Zepto 📋');
+  }
+
   async function handleEnd() {
     setEnding(true);
     await onEndOrder(totalAmount ? parseFloat(totalAmount) : undefined);
@@ -43,11 +65,18 @@ export function OrderChecklistView({
   return (
     <Drawer open={open} onClose={onClose} title="Order Checklist 📋" className="max-h-[95vh]">
       <div className="p-4 space-y-4">
-        {/* Progress bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-            <span>{inCartCount} in cart</span>
-            <span>{pendingCount} pending</span>
+        {/* Progress bar & Copy button row */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+            <span>{inCartCount} in cart · {pendingCount} pending</span>
+            <button
+              onClick={copyFormattedList}
+              className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg"
+              title="Copy formatted text list"
+            >
+              <Copy size={13} />
+              Copy List
+            </button>
           </div>
           <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
             <motion.div
@@ -143,7 +172,6 @@ export function OrderChecklistView({
             value={totalAmount}
             onChange={(e) => setTotalAmount(e.target.value)}
           />
-          <p className="text-xs text-zinc-400 px-1">Used for split-bill tracking</p>
         </div>
 
         <Button

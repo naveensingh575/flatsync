@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/layout/BottomNav';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Copy, LogOut, Users, Plus, Check } from 'lucide-react';
+import { Copy, LogOut, Users, Plus, Check, Share2, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -24,6 +24,36 @@ export default function SettingsPage() {
     if (!flat) return;
     navigator.clipboard.writeText(flat.join_code);
     toast.success('Join code copied!');
+  }
+
+  function shareOnWhatsApp() {
+    if (!flat) return;
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const joinUrl = `${siteUrl}/onboarding?code=${flat.join_code}`;
+    const message = `🛒 Join our "${flat.name}" group on FlatSync to add grocery items together:\n\n👉 ${joinUrl}\n\nInvite Code: ${flat.join_code}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+  }
+
+  async function shareNative() {
+    if (!flat) return;
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const joinUrl = `${siteUrl}/onboarding?code=${flat.join_code}`;
+    const text = `Join our "${flat.name}" group on FlatSync with code: ${flat.join_code}`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join ${flat.name} on FlatSync`,
+          text,
+          url: joinUrl,
+        });
+      } catch {
+        // User dismissed share sheet
+      }
+    } else {
+      navigator.clipboard.writeText(`${text}\n${joinUrl}`);
+      toast.success('Invite link copied to clipboard!');
+    }
   }
 
   return (
@@ -62,7 +92,25 @@ export default function SettingsPage() {
               <Copy size={18} />
             </button>
           </div>
-          <p className="text-xs text-zinc-400">Share this code with friends, family, or colleagues so they can join.</p>
+
+          {/* WhatsApp & Native Share Buttons */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              onClick={shareOnWhatsApp}
+              className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs shadow-sm transition-colors"
+            >
+              <MessageCircle size={15} />
+              Share on WhatsApp
+            </button>
+
+            <button
+              onClick={shareNative}
+              className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-medium text-xs transition-colors"
+            >
+              <Share2 size={15} />
+              Share Link
+            </button>
+          </div>
         </Card>
 
         {/* All user groups */}

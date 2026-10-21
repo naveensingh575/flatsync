@@ -50,7 +50,6 @@ export function useGroceryList(flatId: string) {
     });
 
     if (error && error.message.includes('for_user')) {
-      // Fallback if for_user column is not yet migrated in PostgreSQL
       const { for_user, ...legacyPayload } = payload;
       await supabase.from('items').insert({
         ...legacyPayload,
@@ -59,6 +58,13 @@ export function useGroceryList(flatId: string) {
         status: 'pending',
       });
     }
+  }
+
+  async function updateItem(itemId: string, updates: Partial<AddItemPayload>) {
+    await supabase
+      .from('items')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', itemId);
   }
 
   async function updateStatus(itemId: string, status: ItemStatus) {
@@ -73,5 +79,5 @@ export function useGroceryList(flatId: string) {
     await supabase.from('items').delete().eq('id', itemId);
   }
 
-  return { items, loading, addItem, updateStatus, deleteItem, refetch: fetchItems };
+  return { items, loading, addItem, updateItem, updateStatus, deleteItem, refetch: fetchItems };
 }

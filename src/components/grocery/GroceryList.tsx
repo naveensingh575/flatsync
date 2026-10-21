@@ -11,6 +11,7 @@ interface GroceryListProps {
   isOrderingMode: boolean;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onDelete: (id: string) => void;
+  onEdit?: (item: GroceryItemType) => void;
 }
 
 export function GroceryList({
@@ -19,6 +20,7 @@ export function GroceryList({
   isOrderingMode,
   onUpdateStatus,
   onDelete,
+  onEdit,
 }: GroceryListProps) {
   if (loading) {
     return (
@@ -40,8 +42,8 @@ export function GroceryList({
         <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
           <ShoppingBasket size={30} className="text-emerald-500" />
         </div>
-        <p className="font-semibold text-zinc-700 dark:text-zinc-300">List is clear! 🎉</p>
-        <p className="text-sm text-zinc-400">Tap + to add something you need.</p>
+        <p className="font-semibold text-zinc-700 dark:text-zinc-300">No items match your search / list! 🎉</p>
+        <p className="text-sm text-zinc-400">Tap &apos;Add Item to List&apos; below to request something.</p>
       </motion.div>
     );
   }
@@ -55,6 +57,7 @@ export function GroceryList({
             item={item}
             onUpdateStatus={onUpdateStatus}
             onDelete={onDelete}
+            onEdit={onEdit}
             isOrderingMode={isOrderingMode}
           />
         ))}
