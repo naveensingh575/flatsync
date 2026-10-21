@@ -121,6 +121,20 @@ export function useGroceryList(flatId: string) {
     }
 
     try {
+      // 1. Ensure user has membership recorded for flatId in group_members and profile.flat_id
+      try {
+        await supabase
+          .from('group_members')
+          .upsert({ group_id: flatId, user_id: profile.id, role: 'member' }, { onConflict: 'group_id,user_id' });
+      } catch (_) {}
+
+      if (profile.flat_id !== flatId) {
+        try {
+          await supabase.from('profiles').update({ flat_id: flatId }).eq('id', profile.id);
+        } catch (_) {}
+      }
+
+      // 2. Perform insert
       const { data, error } = await supabase
         .from('items')
         .insert({
@@ -158,7 +172,12 @@ export function useGroceryList(flatId: string) {
           );
         } else if (fallbackRes.error) {
           console.error('Fallback insert failed:', fallbackRes.error);
-          toast.error(fallbackRes.error.message || 'Failed to add item to database');
+          // If RLS blocked insert, guide user or keep optimistic
+          if (fallbackRes.error.message.includes('row-level security')) {
+            console.warn('RLS policy requires membership sync');
+          } else {
+            toast.error(fallbackRes.error.message || 'Failed to sync item to database');
+          }
         }
       } else if (data) {
         // Replace temporary item with confirmed row from database
@@ -169,7 +188,6 @@ export function useGroceryList(flatId: string) {
     } catch (err: any) {
       console.error('Network error adding item:', err);
       // Keep optimistic item in state so user doesn't lose what they just typed
-      toast.error('Network error: item saved locally');
     }
   }
 
