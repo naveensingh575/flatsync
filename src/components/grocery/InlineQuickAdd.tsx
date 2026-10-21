@@ -42,7 +42,7 @@ export function InlineQuickAdd({ onAdd, onOpenDrawer }: InlineQuickAddProps) {
         category: parsed.category || 'other',
         is_urgent: parsed.is_urgent || false,
         quantity: parsed.quantity || null,
-        note: null,
+        note: parsed.note || null,
         for_user: parsed.for_user || null,
       });
       toast.success(`${parsed.item_name} added! ⚡`, { duration: 2000 });

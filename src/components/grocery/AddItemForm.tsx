@@ -419,6 +419,49 @@ export function AddItemForm({
               onChange={(e) => set('note', e.target.value)}
             />
 
+            {/* Preferred Merchant / Specialty Store Tag */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-zinc-500">
+                Store / Merchant Tag (optional)
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: 'Blinkit', tag: '[Blinkit]', emoji: '⚡' },
+                  { label: 'Zepto', tag: '[Zepto]', emoji: '⚡' },
+                  { label: 'Instamart', tag: '[Instamart]', emoji: '⚡' },
+                  { label: 'Apollo Pharmacy', tag: '[Apollo]', emoji: '💊' },
+                  { label: 'Local Mandi', tag: '[Local Mandi]', emoji: '🥬' },
+                  { label: 'Meat / Licious', tag: '[Licious]', emoji: '🥩' },
+                ].map((m) => {
+                  const isSelected = form.note?.includes(m.tag);
+                  return (
+                    <button
+                      key={m.label}
+                      type="button"
+                      onClick={() => {
+                        const currentNote = form.note || '';
+                        if (isSelected) {
+                          set('note', currentNote.replace(m.tag, '').trim());
+                        } else {
+                          const cleaned = currentNote.replace(/\[(Blinkit|Zepto|Instamart|Apollo|Local Mandi|Licious)[^\]]*\]/gi, '').trim();
+                          set('note', `${m.tag} ${cleaned}`.trim());
+                        }
+                      }}
+                      className={cn(
+                        'px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1',
+                        isSelected
+                          ? 'bg-violet-600 border-violet-600 text-white shadow-xs'
+                          : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400'
+                      )}
+                    >
+                      <span>{m.emoji}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Urgent toggle */}
             <button
               type="button"

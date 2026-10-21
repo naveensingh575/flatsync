@@ -33,6 +33,10 @@ export function GroceryItemCard({
   const statusMeta = STATUS_LABELS[item.status];
   const requesterName = item.requested_by?.name || 'Someone';
 
+  const cleanNoteText = item.note ? item.note.replace(/\[[^\]]*\]/g, '').trim() : '';
+  const storeTagMatch = item.note?.match(/\[(Blinkit|Zepto|Instamart|Apollo|Pharmacy|Local Mandi|Mandi|Licious|Meat)[^\]]*\]/i);
+  const storeTagName = storeTagMatch ? storeTagMatch[0].replace(/[\[\]]/g, '') : null;
+
   const x = useMotionValue(0);
 
   // Background opacity transitions based on drag direction
@@ -140,8 +144,8 @@ export function GroceryItemCard({
               {item.quantity && (
                 <p className="text-xs text-zinc-400 mt-0.5">{item.quantity}</p>
               )}
-              {item.note && (
-                <p className="text-xs text-zinc-400 mt-0.5 italic">{item.note}</p>
+              {cleanNoteText && (
+                <p className="text-xs text-zinc-400 mt-0.5 italic">{cleanNoteText}</p>
               )}
             </div>
 
@@ -177,6 +181,13 @@ export function GroceryItemCard({
             )}>
               {catMeta?.emoji} {catMeta?.label}
             </span>
+
+            {/* Specialty Store / Merchant Tag */}
+            {storeTagName && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                🏷️ {storeTagName}
+              </span>
+            )}
 
             {/* Urgent */}
             {item.is_urgent && (

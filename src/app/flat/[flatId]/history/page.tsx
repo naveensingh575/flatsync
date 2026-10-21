@@ -21,12 +21,25 @@ export default function HistoryPage() {
   const routeParams = useParams();
   const flatId = (routeParams?.flatId as string) || '';
   const { orders, purchasedItems, loading } = useHistory(flatId);
-  const { addItem } = useGroceryList(flatId);
+  const { addItem, addBatchItems } = useGroceryList(flatId);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   async function quickReAdd(itemName: string, category: string) {
     await addItem({ item_name: itemName, category: category as any, is_urgent: false, quantity: null, note: null });
     toast.success(`${itemName} added back to list!`);
+  }
+
+  async function handleReAddEntireOrder(items: typeof purchasedItems) {
+    if (!items.length) return;
+    const payload = items.map((i) => ({
+      item_name: i.item_name,
+      category: i.category,
+      quantity: i.quantity || null,
+      note: i.note || null,
+      is_urgent: false,
+    }));
+    await addBatchItems(payload);
+    toast.success(`Re-added all ${items.length} items to your grocery list! 🛒`);
   }
 
   if (loading) {
@@ -103,6 +116,20 @@ export default function HistoryPage() {
                         className="overflow-hidden border-t border-zinc-100 dark:border-zinc-800"
                       >
                         <div className="p-3 space-y-2">
+                          {orderItems.length > 0 && (
+                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800">
+                              <span className="text-xs font-semibold text-zinc-500">
+                                {orderItems.length} item{orderItems.length === 1 ? '' : 's'}
+                              </span>
+                              <button
+                                onClick={() => handleReAddEntireOrder(orderItems)}
+                                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                              >
+                                <RotateCcw size={12} />
+                                <span>Re-Add Entire Order</span>
+                              </button>
+                            </div>
+                          )}
                           {orderItems.length === 0 && (
                             <p className="text-xs text-zinc-400 text-center py-2">No item details stored</p>
                           )}

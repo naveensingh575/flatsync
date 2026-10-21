@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { OrderingSession, Platform } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
+import { sendOrderingAlertNotification } from '@/lib/notifications';
 import toast from 'react-hot-toast';
 
 // Play a subtle notification chime using Web Audio API (no external asset needed)
@@ -61,6 +62,7 @@ export function useOrderingStatus(flatId: string) {
           const platformName = s.platform ? s.platform.toUpperCase() : 'QUICK-COMMERCE';
 
           playNotificationChime();
+          sendOrderingAlertNotification(buyerName, platformName);
 
           toast.custom(
             (t) => (

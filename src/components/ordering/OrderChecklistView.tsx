@@ -264,6 +264,15 @@ export function OrderChecklistView({
                           For: {item.for_user}
                         </span>
                       )}
+                      {item.note && (() => {
+                        const storeMatch = item.note.match(/\[(Blinkit|Zepto|Instamart|Apollo|Pharmacy|Local Mandi|Mandi|Licious|Meat)[^\]]*\]/i);
+                        if (!storeMatch) return null;
+                        return (
+                          <span className="text-[10px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40 px-1.5 py-0.2 rounded border border-violet-200 dark:border-violet-800">
+                            🏷️ {storeMatch[0].replace(/[\[\]]/g, '')}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
 

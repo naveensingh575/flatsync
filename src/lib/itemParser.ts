@@ -60,6 +60,25 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
   let for_user: string | null = null;
   let quantity: string | null = null;
   let category: ItemCategory = 'other';
+  let note: string | null = null;
+
+  // Check for store / merchant keywords
+  const storePatterns: { regex: RegExp; tag: string }[] = [
+    { regex: /\b(from\s+)?blinkit\b/i, tag: '[Blinkit]' },
+    { regex: /\b(from\s+)?zepto\b/i, tag: '[Zepto]' },
+    { regex: /\b(from\s+)?instamart\b/i, tag: '[Instamart]' },
+    { regex: /\b(from\s+)?(apollo|pharmacy|chemist|medplus)\b/i, tag: '[Apollo]' },
+    { regex: /\b(from\s+)?(local\s+mandi|mandi|sabzi\s+mandi|vendor|thela)\b/i, tag: '[Local Mandi]' },
+    { regex: /\b(from\s+)?(licious|meat\s+shop|butcher)\b/i, tag: '[Licious]' },
+  ];
+
+  for (const { regex, tag } of storePatterns) {
+    if (regex.test(cleanText)) {
+      note = tag;
+      cleanText = cleanText.replace(regex, ' ');
+      break;
+    }
+  }
 
   // 1. Check for urgency keywords
   const urgentRegex = /\b(urgent|emergency|asap|jaldi|fast|priority|needed today)\b/gi;
@@ -128,6 +147,7 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
     category,
     is_urgent,
     for_user,
+    note,
   };
 }
 
@@ -179,7 +199,7 @@ export function parseBulkGroceryInput(rawText: string): AddItemPayload[] {
         category: parsed.category || 'other',
         is_urgent: parsed.is_urgent || false,
         quantity: parsed.quantity || null,
-        note: null,
+        note: parsed.note || null,
         for_user: parsed.for_user || null,
       });
     }

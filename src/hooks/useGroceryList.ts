@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GroceryItem, ItemStatus, AddItemPayload } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
+import { enqueueOfflineAction, flushOfflineQueue, getOfflineQueue } from '@/lib/offlineQueue';
 import toast from 'react-hot-toast';
 
 export function useGroceryList(flatId: string) {
@@ -12,6 +13,9 @@ export function useGroceryList(flatId: string) {
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== 'undefined' ? navigator.onLine : true
+  );
 
   // Keep a reference to latest items for rollback
   const itemsRef = useRef(items);
@@ -55,8 +59,26 @@ export function useGroceryList(flatId: string) {
         setIsConnected(status === 'SUBSCRIBED');
       });
 
+    const handleOnline = async () => {
+      setIsOnline(true);
+      const count = await flushOfflineQueue(supabase);
+      if (count > 0) {
+        toast.success(`Back online! Synced ${count} item${count > 1 ? 's' : ''} 🟢`);
+        fetchItems();
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast('You are offline. Actions will be queued 📴', { icon: '📴' });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, [flatId, fetchItems]);
 
@@ -85,6 +107,16 @@ export function useGroceryList(flatId: string) {
 
     // Instant local update (< 16ms)
     setItems((prev) => [optimisticItem, ...prev]);
+
+    // Handle offline queue
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineAction({
+        type: 'ADD_ITEM',
+        payload: { flatId, userId: profile.id, itemPayload: payload, tempId },
+      });
+      toast('Saved offline (will sync when online) 📴', { icon: '📴' });
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -233,6 +265,14 @@ export function useGroceryList(flatId: string) {
       )
     );
 
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineAction({
+        type: 'UPDATE_STATUS',
+        payload: { flatId, userId: profile.id, itemId, status },
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('items')
@@ -251,6 +291,14 @@ export function useGroceryList(flatId: string) {
     const previous = itemsRef.current;
     setItems((prev) => prev.filter((i) => i.id !== itemId));
 
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      enqueueOfflineAction({
+        type: 'DELETE_ITEM',
+        payload: { flatId, userId: profile?.id || '', itemId },
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase.from('items').delete().eq('id', itemId);
       if (error) throw error;
@@ -264,6 +312,7 @@ export function useGroceryList(flatId: string) {
     items,
     loading,
     isConnected,
+    isOnline,
     addItem,
     addBatchItems,
     updateItem,
