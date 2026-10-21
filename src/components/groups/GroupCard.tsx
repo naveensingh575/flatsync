@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Users,
-  UserPlus,
   Share2,
   MessageCircle,
   Copy,
@@ -38,17 +37,13 @@ export function GroupCard({
   onDeleteGroup,
 }: GroupCardProps) {
   const router = useRouter();
-  const [showInviteMenu, setShowInviteMenu] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  function handleCopyInvite() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
-    const joinUrl = `${siteUrl}/onboarding?code=${group.join_code}`;
-    navigator.clipboard.writeText(`Join "${group.name}" on FlatSync:\n${joinUrl}\nInvite Code: ${group.join_code}`);
-    toast.success('Invite link & code copied! 📋');
-    setShowInviteMenu(false);
+  function handleCopyCode() {
+    navigator.clipboard.writeText(group.join_code);
+    toast.success('Join code copied! 📋');
   }
 
   function handleShareWhatsApp() {
@@ -56,7 +51,27 @@ export function GroupCard({
     const joinUrl = `${siteUrl}/onboarding?code=${group.join_code}`;
     const message = `🛒 Join our "${group.name}" group on FlatSync to add groceries together:\n\n👉 ${joinUrl}\n\nInvite Code: ${group.join_code}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
-    setShowInviteMenu(false);
+  }
+
+  async function handleShareLink() {
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const joinUrl = `${siteUrl}/onboarding?code=${group.join_code}`;
+    const text = `Join our "${group.name}" group on FlatSync with code: ${group.join_code}`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join ${group.name} on FlatSync`,
+          text,
+          url: joinUrl,
+        });
+      } catch {
+        // User dismissed share sheet
+      }
+    } else {
+      navigator.clipboard.writeText(`${text}\n${joinUrl}`);
+      toast.success('Invite link copied to clipboard!');
+    }
   }
 
   async function handleConfirmLeave() {
@@ -130,13 +145,13 @@ export function GroupCard({
       </div>
 
       {/* 2. Members List Preview */}
-      <div className="p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800 space-y-1.5">
-        <div className="flex items-center justify-between text-[11px] text-zinc-500 font-semibold px-0.5">
+      <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-850 space-y-2">
+        <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-semibold px-0.5">
           <span className="flex items-center gap-1">
             <Users size={12} /> Members ({members.length})
           </span>
           {members.length > 0 && (
-            <span className="text-[10px] font-normal text-zinc-400 truncate max-w-[140px]">
+            <span className="text-[10px] font-normal text-zinc-400 truncate max-w-[150px]">
               {members.slice(0, 3).map((m) => m.name).join(', ')}
               {members.length > 3 && ` +${members.length - 3} more`}
             </span>
@@ -149,11 +164,11 @@ export function GroupCard({
             members.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-750 text-[11px]"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-750 text-xs shadow-2xs"
                 title={m.name}
               >
                 <Avatar name={m.name} src={m.avatar_url} id={m.id} size="sm" />
-                <span className="font-medium text-zinc-700 dark:text-zinc-300 max-w-[70px] truncate">
+                <span className="font-medium text-zinc-800 dark:text-zinc-200 max-w-[85px] truncate">
                   {m.name}
                 </span>
               </div>
@@ -166,59 +181,69 @@ export function GroupCard({
         </div>
       </div>
 
-      {/* 3. Actions Row: Invite, Leave, Delete */}
-      <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-        {/* Add People / Invite Button */}
-        <div className="relative">
+      {/* 3. Collab, Share & Actions directly on card */}
+      <div className="pt-2 border-t border-zinc-150 dark:border-zinc-800/80 space-y-2">
+        {/* Invite Code row */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-zinc-100/70 dark:bg-zinc-800/80 border border-zinc-200/50 dark:border-zinc-700/50">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Invite Code</span>
+            <p className="font-mono font-bold text-sm text-zinc-900 dark:text-white tracking-widest">
+              {group.join_code}
+            </p>
+          </div>
           <button
-            onClick={() => setShowInviteMenu(!showInviteMenu)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            type="button"
+            onClick={handleCopyCode}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-750 text-zinc-700 dark:text-zinc-200 text-xs font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-650 transition-colors shadow-2xs cursor-pointer active:scale-95"
+            title="Copy Invite Code"
           >
-            <UserPlus size={13} />
-            <span>Add People</span>
+            <Copy size={13} />
+            <span>Copy Code</span>
           </button>
-
-          {/* Quick Invite Popover */}
-          {showInviteMenu && (
-            <div className="absolute left-0 bottom-full mb-1.5 w-48 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-20 p-1.5 space-y-1">
-              <button
-                onClick={handleShareWhatsApp}
-                className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-emerald-600 dark:text-emerald-400 transition-colors"
-              >
-                <MessageCircle size={14} />
-                <span>Share WhatsApp</span>
-              </button>
-              <button
-                onClick={handleCopyInvite}
-                className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors"
-              >
-                <Copy size={14} />
-                <span>Copy Invite Link</span>
-              </button>
-            </div>
-          )}
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* Leave Group Button */}
+        {/* WhatsApp & Share Link Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer"
+          >
+            <MessageCircle size={14} />
+            <span>Share WhatsApp</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareLink}
+            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-95 text-zinc-700 dark:text-zinc-200 font-semibold text-xs transition-all cursor-pointer"
+          >
+            <Share2 size={14} />
+            <span>Share Link</span>
+          </button>
+        </div>
+
+        {/* Group Actions: Leave & Delete */}
+        <div className="flex items-center justify-end gap-2 pt-1">
           {onLeaveGroup && (
             <button
+              type="button"
               onClick={() => setShowLeaveConfirm(true)}
-              className="p-1.5 rounded-xl text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
-              title={`Leave ${group.name}`}
+              className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 px-2 py-1 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors cursor-pointer"
             >
-              <LogOut size={14} />
+              <LogOut size={12} />
+              <span>Leave Group</span>
             </button>
           )}
 
-          {/* Delete Group Button */}
           {onDeleteGroup && (
             <button
+              type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="p-1.5 rounded-xl text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-              title={`Delete ${group.name}`}
+              className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
+              <span>Delete Group</span>
             </button>
           )}
         </div>
