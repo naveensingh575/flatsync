@@ -180,7 +180,7 @@ export default function DashboardPage() {
       </main>
 
       {/* Mobile Action Dock above BottomNav with zero overlap */}
-      <div className="fixed bottom-16 left-0 right-0 z-20 px-4 py-2.5 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 shadow-lg">
+      <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-20 px-4 py-2.5 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 shadow-lg">
         <div className="max-w-lg mx-auto flex items-center gap-2.5">
           <Button
             onClick={() => setIsAddItemOpen(true)}
