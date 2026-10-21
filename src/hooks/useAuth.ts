@@ -18,7 +18,7 @@ export function useAuth() {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
         setProfile(data as Profile);
       } else {
         setProfile(null);
@@ -34,10 +34,16 @@ export function useAuth() {
   }
 
   async function signUp(email: string, password: string, name: string) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
     if (error) throw error;
     if (data.user) {
-      await supabase.from('profiles').insert({
+      await supabase.from('profiles').upsert({
         id: data.user.id,
         name,
         avatar_url: null,
