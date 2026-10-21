@@ -130,3 +130,61 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
     for_user,
   };
 }
+
+/**
+ * Parses multi-line or comma-separated lists copied from WhatsApp, Notes, or Slack
+ */
+export function parseBulkGroceryInput(rawText: string): AddItemPayload[] {
+  if (!rawText || !rawText.trim()) return [];
+
+  // Split lines
+  let lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  // If pasted as a single comma-separated line (e.g. "milk, eggs, brown bread")
+  if (lines.length === 1 && lines[0].includes(',')) {
+    lines = lines[0].split(',').map((l) => l.trim()).filter(Boolean);
+  }
+
+  // Filter out non-item introductory lines (e.g., "Grocery list:", "Items to buy:")
+  const ignoredHeaderRegex = /^(grocery|shopping|items?|list|order|today|hey|plz|please|to buy|flat|room|blinkit|zepto|instamart)\b/i;
+
+  const results: AddItemPayload[] = [];
+
+  for (let line of lines) {
+    // Strip leading bullets: "-", "*", "•", "–"
+    line = line.replace(/^[\-\*•–\+]\s*/, '').trim();
+
+    // Strip checkboxes: "[ ]", "[x]", "[X]"
+    line = line.replace(/^\[[\sXx]?\]\s*/, '').trim();
+
+    // Strip numbers with dot or paren: "1.", "1)", "1 -"
+    line = line.replace(/^\d+[\.\)\-]\s*/, '').trim();
+
+    if (!line || line.length < 2) continue;
+
+    // Check if it's an introductory line
+    if (line.endsWith(':') || ignoredHeaderRegex.test(line)) {
+      if (line.endsWith(':') || line.split(' ').length <= 4) {
+        continue;
+      }
+    }
+
+    const parsed = parseGroceryInput(line);
+    if (parsed.item_name && parsed.item_name.length > 0) {
+      results.push({
+        item_name: parsed.item_name,
+        category: parsed.category || 'other',
+        is_urgent: parsed.is_urgent || false,
+        quantity: parsed.quantity || null,
+        note: null,
+        for_user: parsed.for_user || null,
+      });
+    }
+  }
+
+  return results;
+}
+

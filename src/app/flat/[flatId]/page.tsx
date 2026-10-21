@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const [urgentOnly, setUrgentOnly] = useState(false);
 
   const { flat } = useFlat(flatId);
-  const { items, loading, isConnected, addItem, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
+  const { items, loading, isConnected, addItem, addBatchItems, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
   const { purchasedItems } = useHistory(flatId);
 
@@ -223,6 +223,7 @@ export default function DashboardPage() {
           await addItem(payload);
           toast.success(`${payload.item_name} added to list!`);
         }}
+        onAddBatch={addBatchItems}
       />
 
       <EditItemDrawer

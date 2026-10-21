@@ -129,6 +129,77 @@ export function useGroceryList(flatId: string) {
     }
   }
 
+  // 100% Optimistic Batch Add Items (Multi-Item Paste)
+  async function addBatchItems(payloads: AddItemPayload[]) {
+    if (!profile || payloads.length === 0) return;
+
+    const tempItems: GroceryItem[] = payloads.map((payload, idx) => ({
+      id: `temp-${Date.now()}-${idx}`,
+      flat_id: flatId,
+      requested_by_id: profile.id,
+      requested_by: profile,
+      for_user: payload.for_user || null,
+      item_name: payload.item_name,
+      category: payload.category || 'other',
+      is_urgent: payload.is_urgent || false,
+      quantity: payload.quantity || null,
+      note: payload.note || null,
+      status: 'pending',
+      ordered_by_id: null,
+      order_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Optimistically append all items
+    setItems((prev) => [...prev, ...tempItems]);
+
+    try {
+      const rows = payloads.map((p) => ({
+        item_name: p.item_name,
+        category: p.category || 'other',
+        is_urgent: p.is_urgent || false,
+        quantity: p.quantity || null,
+        note: p.note || null,
+        for_user: p.for_user || null,
+        flat_id: flatId,
+        requested_by_id: profile.id,
+        status: 'pending',
+      }));
+
+      const { data, error } = await supabase
+        .from('items')
+        .insert(rows)
+        .select('*, requested_by:profiles!items_requested_by_id_fkey(*)');
+
+      if (error && error.message.includes('for_user')) {
+        const fallbackRows = rows.map(({ for_user, ...r }) => r);
+        const fallbackRes = await supabase
+          .from('items')
+          .insert(fallbackRows)
+          .select('*, requested_by:profiles!items_requested_by_id_fkey(*)');
+
+        if (fallbackRes.data) {
+          const tempIds = new Set(tempItems.map((t) => t.id));
+          setItems((prev) => [
+            ...prev.filter((i) => !tempIds.has(i.id)),
+            ...(fallbackRes.data as GroceryItem[]),
+          ]);
+        }
+      } else if (data) {
+        const tempIds = new Set(tempItems.map((t) => t.id));
+        setItems((prev) => [
+          ...prev.filter((i) => !tempIds.has(i.id)),
+          ...(data as GroceryItem[]),
+        ]);
+      }
+    } catch {
+      const tempIds = new Set(tempItems.map((t) => t.id));
+      setItems((prev) => prev.filter((i) => !tempIds.has(i.id)));
+      toast.error('Network error: Failed to add batch items');
+    }
+  }
+
   // 100% Optimistic Update Item
   async function updateItem(itemId: string, updates: Partial<AddItemPayload>) {
     const previous = itemsRef.current;
@@ -194,6 +265,7 @@ export function useGroceryList(flatId: string) {
     loading,
     isConnected,
     addItem,
+    addBatchItems,
     updateItem,
     updateStatus,
     deleteItem,
