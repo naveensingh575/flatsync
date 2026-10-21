@@ -20,6 +20,7 @@ interface GroceryListProps {
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: GroceryItemType) => void;
+  onUpdateItem?: (id: string, updates: Partial<AddItemPayload>) => Promise<void> | void;
   onQuickAdd?: (payload: AddItemPayload) => void;
 }
 
@@ -30,6 +31,7 @@ export function GroceryList({
   onUpdateStatus,
   onDelete,
   onEdit,
+  onUpdateItem,
   onQuickAdd,
 }: GroceryListProps) {
   if (loading) {
@@ -93,6 +95,7 @@ export function GroceryList({
             onUpdateStatus={onUpdateStatus}
             onDelete={onDelete}
             onEdit={onEdit}
+            onUpdateItem={onUpdateItem}
             isOrderingMode={isOrderingMode}
           />
         ))}

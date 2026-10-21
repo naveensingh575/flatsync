@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -51,6 +52,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   const supabase = createClient();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>('system');
   const [alertsEnabled, setAlertsEnabledState] = useState(true);
@@ -80,6 +82,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
 
   // Close when clicking outside
   useEffect(() => {
+    setMounted(true);
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsOpen(false);
@@ -549,328 +552,335 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
         )}
       </AnimatePresence>
 
-      {/* Change Password Modal (Verified with Existing Password) */}
-      <AnimatePresence>
-        {showPasswordModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <KeyRound size={18} className="text-zinc-700 dark:text-zinc-300" />
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Change Password</h3>
-                </div>
-                <button
-                  onClick={() => setShowPasswordModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <form onSubmit={handleChangePassword} className="space-y-3">
-                <Input
-                  label="Current Password"
-                  type="password"
-                  placeholder="Enter current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                />
-                <Input
-                  label="New Password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-                <Input
-                  label="Confirm New Password"
-                  type="password"
-                  placeholder="Repeat new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-                <div className="flex items-center gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => setShowPasswordModal(false)}
+      {/* Portal all modals directly into document.body to break out of any header backdrop-filter stacking contexts */}
+      {mounted &&
+        createPortal(
+          <>
+            {/* Change Password Modal (Verified with Existing Password) */}
+            <AnimatePresence>
+              {showPasswordModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={passwordLoading}
+                    <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <KeyRound size={18} className="text-zinc-700 dark:text-zinc-300" />
+                        <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Change Password</h3>
+                      </div>
+                      <button
+                        onClick={() => setShowPasswordModal(false)}
+                        className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleChangePassword} className="space-y-3">
+                      <Input
+                        label="Current Password"
+                        type="password"
+                        placeholder="Enter current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="New Password"
+                        type="password"
+                        placeholder="At least 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                      />
+                      <Input
+                        label="Confirm New Password"
+                        type="password"
+                        placeholder="Repeat new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <div className="flex items-center gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="flex-1"
+                          onClick={() => setShowPasswordModal(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="flex-1"
+                          disabled={passwordLoading}
+                        >
+                          {passwordLoading ? 'Verifying...' : 'Save Password'}
+                        </Button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Refer FlatSync Modal */}
+            <AnimatePresence>
+              {showReferModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
                   >
-                    {passwordLoading ? 'Verifying...' : 'Save Password'}
-                  </Button>
+                    <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Share2 size={18} className="text-emerald-500" />
+                        <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
+                          Refer / Share FlatSync
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setShowReferModal(false)}
+                        className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 text-center py-1">
+                      <span className="text-3xl">🎁</span>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 px-2 leading-relaxed">
+                        Share FlatSync with flatmates, family, or friends so everyone can add groceries together and order seamlessly!
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      <button
+                        onClick={handleShareReferralWhatsApp}
+                        className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+                      >
+                        <MessageCircle size={15} />
+                        <span>Share via WhatsApp</span>
+                      </button>
+
+                      <button
+                        onClick={handleCopyReferralLink}
+                        className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors cursor-pointer"
+                      >
+                        <Copy size={15} />
+                        <span>Copy FlatSync Link</span>
+                      </button>
+
+                      <button
+                        onClick={handleNativeReferralShare}
+                        className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-850 hover:bg-zinc-100 text-zinc-600 dark:text-zinc-300 font-semibold text-xs border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer"
+                      >
+                        <Share2 size={15} />
+                        <span>More Sharing Options...</span>
+                      </button>
+                    </div>
+                  </motion.div>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              )}
+            </AnimatePresence>
 
-      {/* Refer FlatSync Modal */}
-      <AnimatePresence>
-        {showReferModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <Share2 size={18} className="text-emerald-500" />
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
-                    Refer / Share FlatSync
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowReferModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-2 text-center py-1">
-                <span className="text-3xl">🎁</span>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 px-2 leading-relaxed">
-                  Share FlatSync with flatmates, family, or friends so everyone can add groceries together and order seamlessly!
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-1">
-                <button
-                  onClick={handleShareReferralWhatsApp}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-                >
-                  <MessageCircle size={15} />
-                  <span>Share via WhatsApp</span>
-                </button>
-
-                <button
-                  onClick={handleCopyReferralLink}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 font-semibold text-xs transition-colors cursor-pointer"
-                >
-                  <Copy size={15} />
-                  <span>Copy FlatSync Link</span>
-                </button>
-
-                <button
-                  onClick={handleNativeReferralShare}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-850 hover:bg-zinc-100 text-zinc-600 dark:text-zinc-300 font-semibold text-xs border border-zinc-200 dark:border-zinc-700 transition-colors cursor-pointer"
-                >
-                  <Share2 size={15} />
-                  <span>More Sharing Options...</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Rate FlatSync Modal */}
-      <AnimatePresence>
-        {showRateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl text-center space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
-            >
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowRateModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-4xl">⭐</span>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  Rate FlatSync
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  How much do you love dispatching groceries together?
-                </p>
-              </div>
-
-              {/* Star selector */}
-              <div className="flex items-center justify-center gap-2 py-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => setRating(star)}
-                    className="text-3xl transition-transform hover:scale-125 focus:outline-none cursor-pointer"
+            {/* Rate FlatSync Modal */}
+            <AnimatePresence>
+              {showRateModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl text-center space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
                   >
-                    <span
-                      className={cn(
-                        (hoverRating || rating) >= star ? 'text-amber-400' : 'text-zinc-200 dark:text-zinc-700'
-                      )}
-                    >
-                      ★
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => setShowRateModal(false)}
+                        className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
 
-              <Button onClick={handleRateSubmit} className="w-full">
-                Submit Rating ✨
-              </Button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                    <div className="space-y-1">
+                      <span className="text-4xl">⭐</span>
+                      <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                        Rate FlatSync
+                      </h3>
+                      <p className="text-xs text-zinc-400">
+                        How much do you love dispatching groceries together?
+                      </p>
+                    </div>
 
-      {/* Feedback Modal */}
-      <AnimatePresence>
-        {showFeedbackModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <MessageSquare size={18} className="text-sky-500" />
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
-                    Send Feedback
-                  </h3>
+                    {/* Star selector */}
+                    <div className="flex items-center justify-center gap-2 py-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          onClick={() => setRating(star)}
+                          className="text-3xl transition-transform hover:scale-125 focus:outline-none cursor-pointer"
+                        >
+                          <span
+                            className={cn(
+                              (hoverRating || rating) >= star ? 'text-amber-400' : 'text-zinc-200 dark:text-zinc-700'
+                            )}
+                          >
+                            ★
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button onClick={handleRateSubmit} className="w-full">
+                      Submit Rating ✨
+                    </Button>
+                  </motion.div>
                 </div>
-                <button
-                  onClick={() => setShowFeedbackModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              )}
+            </AnimatePresence>
 
-              <form onSubmit={handleFeedbackSubmit} className="space-y-3">
-                <div className="flex items-center gap-1.5">
-                  {(['feature', 'bug', 'general'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setFeedbackCategory(cat)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-xl text-xs font-semibold capitalize border transition-all cursor-pointer',
-                        feedbackCategory === cat
-                          ? 'bg-sky-500 border-sky-500 text-white shadow-xs'
-                          : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-zinc-500">Your Message</label>
-                  <textarea
-                    rows={4}
-                    value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                    placeholder="Tell us what feature you'd love, or any issues you encountered..."
-                    className="w-full p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                    required
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => setShowFeedbackModal(false)}
+            {/* Feedback Modal */}
+            <AnimatePresence>
+              {showFeedbackModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
                   >
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="flex-1">
-                    Send Feedback 🚀
-                  </Button>
+                    <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare size={18} className="text-sky-500" />
+                        <h3 className="font-bold text-sm text-zinc-900 dark:text-white">
+                          Send Feedback
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setShowFeedbackModal(false)}
+                        className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-3">
+                      <div className="flex items-center gap-1.5">
+                        {(['feature', 'bug', 'general'] as const).map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setFeedbackCategory(cat)}
+                            className={cn(
+                              'px-2.5 py-1 rounded-xl text-xs font-semibold capitalize border transition-all cursor-pointer',
+                              feedbackCategory === cat
+                                ? 'bg-sky-500 border-sky-500 text-white shadow-xs'
+                                : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
+                            )}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-zinc-500">Your Message</label>
+                        <textarea
+                          rows={4}
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          placeholder="Tell us what feature you'd love, or any issues you encountered..."
+                          className="w-full p-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-xs text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="flex-1"
+                          onClick={() => setShowFeedbackModal(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="flex-1">
+                          Send Feedback 🚀
+                        </Button>
+                      </div>
+                    </form>
+                  </motion.div>
                 </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+              )}
+            </AnimatePresence>
 
-      {/* Delete Account Confirmation Modal */}
-      <AnimatePresence>
-        {showDeleteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/60 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
-            >
-              <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-                  <AlertTriangle size={18} />
-                  <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Delete Account</h3>
+            {/* Delete Account Confirmation Modal */}
+            <AnimatePresence>
+              {showDeleteModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-900/60 rounded-3xl p-5 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto overscroll-contain"
+                  >
+                    <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
+                      <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                        <AlertTriangle size={18} />
+                        <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Delete Account</h3>
+                      </div>
+                      <button
+                        onClick={() => setShowDeleteModal(false)}
+                        className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
+                      <p className="font-semibold text-zinc-800 dark:text-zinc-200">
+                        Are you sure you want to permanently delete your account?
+                      </p>
+                      <p>
+                        This will remove you from all your groups and clear your profile data. This action cannot be undone.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => setShowDeleteModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="flex-1"
+                        disabled={deleteLoading}
+                        onClick={handleDeleteAccount}
+                      >
+                        {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
+                      </Button>
+                    </div>
+                  </motion.div>
                 </div>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                <p className="font-semibold text-zinc-800 dark:text-zinc-200">
-                  Are you sure you want to permanently delete your account?
-                </p>
-                <p>
-                  This will remove you from all your groups and clear your profile data. This action cannot be undone.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setShowDeleteModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  className="flex-1"
-                  disabled={deleteLoading}
-                  onClick={handleDeleteAccount}
-                >
-                  {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
-                </Button>
-              </div>
-            </motion.div>
-          </div>
+              )}
+            </AnimatePresence>
+          </>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -202,6 +202,7 @@ export default function DashboardPage() {
             toast.success('Item removed');
           }}
           onEdit={(item) => setEditingItem(item)}
+          onUpdateItem={updateItem}
           onQuickAdd={addItem}
         />
       </main>

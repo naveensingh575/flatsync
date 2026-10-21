@@ -159,6 +159,33 @@ export function EditItemDrawer({
           </div>
         </div>
 
+        {/* Out of Stock (OOS) Status Banner & Remove Action */}
+        {form.note && form.note.includes('[OOS') && (
+          <div className="flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              <div>
+                <p className="text-xs font-bold text-rose-800 dark:text-rose-200">
+                  {form.note.match(/\[OOS[^\]]*\]/)?.[0]?.replace(/[\[\]]/g, '') || 'Out of Stock'}
+                </p>
+                <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                  Marked as unavailable in previous order
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const clean = (form.note || '').replace(/\[OOS[^\]]*\]/g, '').trim();
+                setForm((f) => ({ ...f, note: clean }));
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-200 dark:border-rose-700 transition-colors shadow-2xs cursor-pointer flex-shrink-0"
+            >
+              Remove OOS
+            </button>
+          </div>
+        )}
+
         {/* Urgent toggle */}
         <button
           type="button"

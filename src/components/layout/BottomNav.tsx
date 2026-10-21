@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBasket, History, Plus, ShoppingCart } from 'lucide-react';
+import { ShoppingBasket, Users, History, Plus, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavProps {
@@ -26,25 +26,41 @@ export function BottomNav({
 }: BottomNavProps) {
   const pathname = usePathname();
   const isListActive = pathname === `/flat/${flatId}`;
+  const isGroupsActive = pathname.includes('/settings');
   const isHistoryActive = pathname.includes('/history');
 
   return (
     <nav className="fixed bottom-4 left-0 right-0 z-30 px-4 pointer-events-none pb-safe">
       <div className="max-w-md mx-auto pointer-events-auto">
         <div className="flex items-center justify-between p-2 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-xl shadow-zinc-950/10 dark:shadow-black/40 gap-2">
-          {/* Left Navigation: Grocery List */}
-          <Link
-            href={`/flat/${flatId}`}
-            className={cn(
-              'p-2.5 rounded-full transition-all flex items-center justify-center cursor-pointer flex-shrink-0',
-              isListActive
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-2xs'
-                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
-            )}
-            title="Grocery List"
-          >
-            <ShoppingBasket size={20} strokeWidth={isListActive ? 2.5 : 2} />
-          </Link>
+          {/* Left Navigation: Grocery List & Groups */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Link
+              href={`/flat/${flatId}`}
+              className={cn(
+                'p-2.5 rounded-full transition-all flex items-center justify-center cursor-pointer flex-shrink-0',
+                isListActive
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                  : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+              )}
+              title="Grocery List"
+            >
+              <ShoppingBasket size={20} strokeWidth={isListActive ? 2.5 : 2} />
+            </Link>
+
+            <Link
+              href={`/flat/${flatId}/settings`}
+              className={cn(
+                'p-2.5 rounded-full transition-all flex items-center justify-center cursor-pointer flex-shrink-0',
+                isGroupsActive
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-2xs'
+                  : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+              )}
+              title="Your Groups & Members"
+            >
+              <Users size={19} strokeWidth={isGroupsActive ? 2.5 : 2} />
+            </Link>
+          </div>
 
           {/* Center: Prominent Add Item Button */}
           {onAddItem && (

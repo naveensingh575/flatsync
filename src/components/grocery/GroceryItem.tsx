@@ -1,18 +1,20 @@
 'use client';
 
 import { motion, useMotionValue, useTransform } from 'framer-motion';
-import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User, Pencil } from 'lucide-react';
-import { GroceryItem, ItemStatus } from '@/types/app.types';
+import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User, Pencil, X } from 'lucide-react';
+import { GroceryItem, ItemStatus, AddItemPayload } from '@/types/app.types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { CATEGORY_COLORS, ITEM_CATEGORIES, STATUS_LABELS } from '@/lib/constants';
 import { timeAgo, cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface GroceryItemCardProps {
   item: GroceryItem;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: GroceryItem) => void;
+  onUpdateItem?: (id: string, updates: Partial<AddItemPayload>) => Promise<void> | void;
   isOrderingMode?: boolean;
 }
 
@@ -27,6 +29,7 @@ export function GroceryItemCard({
   onUpdateStatus,
   onDelete,
   onEdit,
+  onUpdateItem,
   isOrderingMode,
 }: GroceryItemCardProps) {
   const catMeta = ITEM_CATEGORIES.find((c) => c.value === item.category);
@@ -196,10 +199,25 @@ export function GroceryItemCard({
               </Badge>
             )}
 
-            {/* Out of Stock Rollover Badge */}
+            {/* Out of Stock Rollover Badge with 1-Tap Remove Option */}
             {item.note && item.note.includes('[OOS') && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                ⚠️ {item.note.match(/\[OOS[^\]]*\]/)?.[0]?.replace(/[\[\]]/g, '') || 'OOS'}
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                <span>⚠️ {item.note.match(/\[OOS[^\]]*\]/)?.[0]?.replace(/[\[\]]/g, '') || 'OOS'}</span>
+                {onUpdateItem && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const cleanNote = (item.note || '').replace(/\[OOS[^\]]*\]/g, '').trim();
+                      onUpdateItem(item.id, { note: cleanNote || null });
+                      toast.success(`Removed OOS tag from ${item.item_name}`);
+                    }}
+                    className="p-0.5 rounded-full hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+                    title="Remove Out of Stock tag"
+                  >
+                    <X size={11} strokeWidth={2.8} />
+                  </button>
+                )}
               </span>
             )}
 
