@@ -85,8 +85,10 @@ export default function DashboardPage() {
 
     for (const pair of pairs) {
       const newQty = bumpItemQuantity(pair.item1.quantity);
-      await updateItem(pair.item1.id, { quantity: newQty });
-      await deleteItem(pair.item2.id);
+      await Promise.all([
+        updateItem(pair.item1.id, { quantity: newQty }),
+        deleteItem(pair.item2.id),
+      ]);
     }
     toast.success(`Merged ${pairs.length} duplicate item${pairs.length === 1 ? '' : 's'}! ✨`);
   }

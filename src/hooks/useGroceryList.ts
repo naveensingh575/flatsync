@@ -251,50 +251,96 @@ export function useGroceryList(flatId: string) {
       prev.map((i) => (i.id === itemId ? { ...i, ...updates } : i))
     );
 
-    try {
-      const { error } = await supabase
-        .from('items')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', itemId);
-
-      if (error) throw error;
-    } catch {
-      setItems(previous);
-      toast.error('Failed to update item');
-    }
-  }
-
-  // 100% Optimistic Status Toggle (Pending <-> In Cart)
-  async function updateStatus(itemId: string, status: ItemStatus) {
-    if (!profile) return;
-    const previous = itemsRef.current;
-
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === itemId
-          ? { ...i, status, ordered_by_id: profile.id, updated_at: new Date().toISOString() }
-          : i
-      )
-    );
-
-    if (typeof window !== 'undefined' && !navigator.onLine) {
-      enqueueOfflineAction({
-        type: 'UPDATE_STATUS',
-        payload: { flatId, userId: profile.id, itemId, status },
-      });
+    // If it's a temporary local item that hasn't synced an ID yet, update is already applied locally
+    if (itemId.startsWith('temp-')) {
       return;
     }
 
     try {
       const { error } = await supabase
         .from('items')
-        .update({ status, ordered_by_id: profile.id, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', itemId);
 
-      if (error) throw error;
-    } catch {
-      setItems(previous);
-      toast.error('Could not update status');
+      if (error) {
+        console.warn('Update item error, trying fallback:', error);
+        // Fallback: strip fields like for_user or special columns if not supported
+        const { for_user, ...cleanUpdates } = updates as any;
+        const fallbackRes = await supabase
+          .from('items')
+          .update({ ...cleanUpdates, updated_at: new Date().toISOString() })
+          .eq('id', itemId);
+
+        if (fallbackRes.error) {
+          console.error('Fallback update failed:', fallbackRes.error);
+          setItems(previous);
+          toast.error(fallbackRes.error.message || 'Failed to update item');
+        }
+      }
+    } catch (err: any) {
+      console.error('Network update error:', err);
+      // Keep optimistic changes
+    }
+  }
+
+  // 100% Optimistic Status Toggle (Pending <-> In Cart)
+  async function updateStatus(itemId: string, status: ItemStatus) {
+    const userId = profile?.id || null;
+    const previous = itemsRef.current;
+
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? { ...i, status, ordered_by_id: userId, updated_at: new Date().toISOString() }
+          : i
+      )
+    );
+
+    if (itemId.startsWith('temp-')) {
+      return;
+    }
+
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      if (userId) {
+        enqueueOfflineAction({
+          type: 'UPDATE_STATUS',
+          payload: { flatId, userId, itemId, status },
+        });
+      }
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      if (userId) {
+        updateData.ordered_by_id = userId;
+      }
+
+      const { error } = await supabase
+        .from('items')
+        .update(updateData)
+        .eq('id', itemId);
+
+      if (error) {
+        console.warn('Primary status update error:', error);
+        // Fallback without ordered_by_id in case foreign key or schema mismatch
+        const fallbackRes = await supabase
+          .from('items')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', itemId);
+
+        if (fallbackRes.error) {
+          console.error('Fallback status update failed:', fallbackRes.error);
+          setItems(previous);
+          toast.error(fallbackRes.error.message || 'Could not update status');
+        }
+      }
+    } catch (err: any) {
+      console.error('Network status update error:', err);
+      // Keep optimistic changes so user isn't disrupted
     }
   }
 
@@ -302,6 +348,11 @@ export function useGroceryList(flatId: string) {
   async function deleteItem(itemId: string) {
     const previous = itemsRef.current;
     setItems((prev) => prev.filter((i) => i.id !== itemId));
+
+    // If item was local temp, deletion is already complete
+    if (itemId.startsWith('temp-')) {
+      return;
+    }
 
     if (typeof window !== 'undefined' && !navigator.onLine) {
       enqueueOfflineAction({
@@ -313,10 +364,14 @@ export function useGroceryList(flatId: string) {
 
     try {
       const { error } = await supabase.from('items').delete().eq('id', itemId);
-      if (error) throw error;
-    } catch {
-      setItems(previous);
-      toast.error('Failed to remove item');
+      if (error) {
+        console.error('Database delete error:', error);
+        setItems(previous);
+        toast.error(error.message || 'Failed to remove item');
+      }
+    } catch (err: any) {
+      console.error('Network delete error:', err);
+      // Keep item deleted in local view
     }
   }
 

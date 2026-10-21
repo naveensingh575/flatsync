@@ -221,12 +221,24 @@ export function GroceryItemCard({
               </span>
             )}
 
-            {/* Status */}
-            {item.status === 'in_cart' && (
-              <Badge className={statusMeta.color}>
-                <ShoppingCart size={10} /> {statusMeta.label}
-              </Badge>
-            )}
+            {/* Status / In Cart Toggle Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
+              }}
+              className={cn(
+                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-transform active:scale-95',
+                item.status === 'in_cart'
+                  ? statusMeta.color
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+              )}
+              title={item.status === 'in_cart' ? 'Tap to mark as Pending' : 'Tap to mark as In Cart'}
+            >
+              <ShoppingCart size={10} />
+              <span>{item.status === 'in_cart' ? 'In Cart ✅' : 'Pending'}</span>
+            </button>
 
             {/* For Person */}
             {item.for_user && (
