@@ -14,7 +14,6 @@ import { GroceryList } from '@/components/grocery/GroceryList';
 import { CategoryFilter } from '@/components/grocery/CategoryFilter';
 import { QuickAddChips } from '@/components/grocery/QuickAddChips';
 import { AddItemForm } from '@/components/grocery/AddItemForm';
-import { InlineQuickAdd } from '@/components/grocery/InlineQuickAdd';
 import { EditItemDrawer } from '@/components/grocery/EditItemDrawer';
 import { OrderingBanner } from '@/components/ordering/OrderingBanner';
 import { StartOrderDrawer } from '@/components/ordering/StartOrderDrawer';
@@ -106,14 +105,6 @@ export default function DashboardPage() {
 
       {/* Main scrollable body with bottom clearance for floating island dock */}
       <main className="max-w-lg mx-auto space-y-3.5 pt-2 pb-28">
-        {/* Instant 1-Tap Inline Quick-Add */}
-        <InlineQuickAdd
-          onAdd={async (payload) => {
-            await addItem(payload);
-          }}
-          onOpenDrawer={() => setIsAddItemOpen(true)}
-        />
-
         {/* Ordering banner */}
         <OrderingBanner
           session={session}

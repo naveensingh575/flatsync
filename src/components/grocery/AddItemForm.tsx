@@ -372,26 +372,24 @@ export function AddItemForm({
               )}
             </div>
 
-            {/* Category grid */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Category</p>
-              <div className="grid grid-cols-4 gap-2">
-                {ITEM_CATEGORIES.map((cat) => (
-                  <button
-                    type="button"
-                    key={cat.value}
-                    onClick={() => set('category', cat.value as ItemCategory)}
-                    className={cn(
-                      'flex flex-col items-center gap-1 p-2 rounded-xl border-2 text-xs font-medium transition-all cursor-pointer',
-                      form.category === cat.value
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
-                    )}
-                  >
-                    <span className="text-xl">{cat.emoji}</span>
-                    <span>{cat.label}</span>
-                  </button>
-                ))}
+            {/* Category Dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                Category
+              </label>
+              <div className="relative">
+                <select
+                  value={form.category}
+                  onChange={(e) => set('category', e.target.value as ItemCategory)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium text-zinc-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer pr-10"
+                >
+                  {ITEM_CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                      {cat.emoji} {cat.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
             </div>
 
@@ -419,46 +417,40 @@ export function AddItemForm({
               onChange={(e) => set('note', e.target.value)}
             />
 
-            {/* Preferred Merchant / Specialty Store Tag */}
+            {/* Preferred Merchant / Specialty Store Tag Dropdown */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 Store / Merchant Tag (optional)
               </label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { label: 'Blinkit', tag: '[Blinkit]', emoji: '⚡' },
-                  { label: 'Zepto', tag: '[Zepto]', emoji: '⚡' },
-                  { label: 'Instamart', tag: '[Instamart]', emoji: '⚡' },
-                  { label: 'Apollo Pharmacy', tag: '[Apollo]', emoji: '💊' },
-                  { label: 'Local Mandi', tag: '[Local Mandi]', emoji: '🥬' },
-                  { label: 'Meat / Licious', tag: '[Licious]', emoji: '🥩' },
-                ].map((m) => {
-                  const isSelected = form.note?.includes(m.tag);
-                  return (
-                    <button
-                      key={m.label}
-                      type="button"
-                      onClick={() => {
-                        const currentNote = form.note || '';
-                        if (isSelected) {
-                          set('note', currentNote.replace(m.tag, '').trim());
-                        } else {
-                          const cleaned = currentNote.replace(/\[(Blinkit|Zepto|Instamart|Apollo|Local Mandi|Licious)[^\]]*\]/gi, '').trim();
-                          set('note', `${m.tag} ${cleaned}`.trim());
-                        }
-                      }}
-                      className={cn(
-                        'px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1',
-                        isSelected
-                          ? 'bg-violet-600 border-violet-600 text-white shadow-xs'
-                          : 'bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400'
-                      )}
-                    >
-                      <span>{m.emoji}</span>
-                      <span>{m.label}</span>
-                    </button>
-                  );
-                })}
+              <div className="relative">
+                <select
+                  value={
+                    (() => {
+                      const match = form.note?.match(/\[(Blinkit|Zepto|Instamart|Apollo|Local Mandi|Licious)[^\]]*\]/i);
+                      return match ? match[0] : '';
+                    })()
+                  }
+                  onChange={(e) => {
+                    const selectedTag = e.target.value;
+                    const currentNote = form.note || '';
+                    const cleaned = currentNote.replace(/\[(Blinkit|Zepto|Instamart|Apollo|Local Mandi|Licious)[^\]]*\]/gi, '').trim();
+                    if (!selectedTag) {
+                      set('note', cleaned || '');
+                    } else {
+                      set('note', `${selectedTag} ${cleaned}`.trim());
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium text-zinc-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer pr-10"
+                >
+                  <option value="" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Any / No specific store</option>
+                  <option value="[Blinkit]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Blinkit</option>
+                  <option value="[Zepto]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Zepto</option>
+                  <option value="[Instamart]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Instamart</option>
+                  <option value="[Apollo]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">💊 Apollo Pharmacy</option>
+                  <option value="[Local Mandi]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥬 Local Mandi</option>
+                  <option value="[Licious]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥩 Meat / Licious</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sun,
@@ -15,6 +16,8 @@ import {
   MessageSquare,
   LogOut,
   ChevronRight,
+  Users,
+  Settings,
   X,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
@@ -32,11 +35,13 @@ import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 interface ProfileMenuProps {
+  flatId?: string;
   isConnected?: boolean;
   isOnline?: boolean;
 }
 
-export function ProfileMenu({ isConnected = true, isOnline = true }: ProfileMenuProps) {
+export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: ProfileMenuProps) {
+  const router = useRouter();
   const { profile } = useAppStore();
   const { signOut } = useAuth();
   const supabase = createClient();
@@ -374,6 +379,23 @@ export function ProfileMenu({ isConnected = true, isOnline = true }: ProfileMenu
                 <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-1">
                   Account & App
                 </p>
+
+                {/* Group Settings & Members */}
+                {flatId && (
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push(`/flat/${flatId}/settings`);
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors border border-zinc-100 dark:border-zinc-800"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Settings size={15} className="text-emerald-500" />
+                      <span>Group Settings & Members</span>
+                    </div>
+                    <ChevronRight size={14} className="text-zinc-400" />
+                  </button>
+                )}
 
                 {/* Change Password */}
                 <button

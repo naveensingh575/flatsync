@@ -15,7 +15,7 @@ export function Header({ flat, isConnected = true, isOnline = true }: HeaderProp
     <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
       <div className="flex items-center justify-between px-3.5 h-14 max-w-lg mx-auto gap-2">
         <GroupSwitcher currentFlat={flat} />
-        <ProfileMenu isConnected={isConnected} isOnline={isOnline} />
+        <ProfileMenu flatId={flat?.id} isConnected={isConnected} isOnline={isOnline} />
       </div>
     </header>
   );
