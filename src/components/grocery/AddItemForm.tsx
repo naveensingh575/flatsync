@@ -5,11 +5,12 @@ import { Plus, Zap, Mic, MicOff, Sparkles, Check, ChevronDown, ListPlus, FileTex
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { AddItemPayload, ItemCategory } from '@/types/app.types';
+import { AddItemPayload, ItemCategory, GroceryItem } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { parseGroceryInput, parseBulkGroceryInput } from '@/lib/itemParser';
 import { COMMON_INDIAN_GROCERIES, FREQUENT_STAPLES, GroceryCatalogItem } from '@/lib/groceryCatalog';
+import { findSimilarItem, bumpItemQuantity } from '@/lib/itemMatcher';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import toast from 'react-hot-toast';
 
@@ -18,6 +19,8 @@ interface AddItemFormProps {
   onClose: () => void;
   onAdd: (payload: AddItemPayload) => Promise<void>;
   onAddBatch?: (payloads: AddItemPayload[]) => Promise<void>;
+  onUpdateItem?: (id: string, updates: Partial<AddItemPayload>) => Promise<void>;
+  existingItems?: GroceryItem[];
   prefill?: Partial<AddItemPayload>;
 }
 
@@ -36,7 +39,15 @@ interface ParsedBulkEntry {
   selected: boolean;
 }
 
-export function AddItemForm({ open, onClose, onAdd, onAddBatch, prefill }: AddItemFormProps) {
+export function AddItemForm({
+  open,
+  onClose,
+  onAdd,
+  onAddBatch,
+  onUpdateItem,
+  existingItems,
+  prefill,
+}: AddItemFormProps) {
   const [entryMode, setEntryMode] = useState<'single' | 'bulk'>('single');
   const [form, setForm] = useState<AddItemPayload>({ ...defaultState, ...prefill });
   const [loading, setLoading] = useState(false);
@@ -44,6 +55,10 @@ export function AddItemForm({ open, onClose, onAdd, onAddBatch, prefill }: AddIt
   const [suggestions, setSuggestions] = useState<GroceryCatalogItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [parsedBanner, setParsedBanner] = useState<string | null>(null);
+
+  const similarItem = form.item_name.trim().length >= 2
+    ? findSimilarItem(form.item_name, existingItems || [])
+    : null;
 
   // Bulk mode states
   const [bulkText, setBulkText] = useState('');
@@ -418,6 +433,34 @@ export function AddItemForm({ open, onClose, onAdd, onAddBatch, prefill }: AddIt
               <Zap size={18} className={form.is_urgent ? 'text-red-500 fill-red-500' : ''} />
               {form.is_urgent ? '⚡ Marked as Urgent' : 'Mark as Urgent (needed today)'}
             </button>
+
+            {/* Smart Duplicate Warning & 1-Tap Bump */}
+            {similarItem && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between gap-2 text-xs animate-in fade-in">
+                <div className="min-w-0">
+                  <p className="font-bold text-amber-900 dark:text-amber-200 truncate">
+                    ⚠️ Already on list: {similarItem.item_name}
+                  </p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                    Qty: {similarItem.quantity || '1 pc'} · requested by {similarItem.requested_by?.name || 'someone'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newQty = bumpItemQuantity(similarItem.quantity);
+                    if (onUpdateItem) {
+                      await onUpdateItem(similarItem.id, { quantity: newQty });
+                    }
+                    toast.success(`Bumped quantity of ${similarItem.item_name} to ${newQty}! 📈`);
+                    onClose();
+                  }}
+                  className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
+                >
+                  + Bump Qty
+                </button>
+              </div>
+            )}
 
             <Button className="w-full" size="lg" onClick={handleSubmit} loading={loading}>
               <Plus size={18} />

@@ -20,6 +20,7 @@ import { StartOrderDrawer } from '@/components/ordering/StartOrderDrawer';
 import { OrderChecklistView } from '@/components/ordering/OrderChecklistView';
 import { Button } from '@/components/ui/Button';
 import { GroceryItem } from '@/types/app.types';
+import { findDuplicatePairs, bumpItemQuantity } from '@/lib/itemMatcher';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -79,6 +80,20 @@ export default function DashboardPage() {
     });
   }, [items, selectedCategory, urgentOnly, searchQuery]);
 
+  const duplicatePairs = useMemo(() => findDuplicatePairs(items), [items]);
+
+  async function handleMergeDuplicates() {
+    const pairs = findDuplicatePairs(items);
+    if (pairs.length === 0) return;
+
+    for (const pair of pairs) {
+      const newQty = bumpItemQuantity(pair.item1.quantity);
+      await updateItem(pair.item1.id, { quantity: newQty });
+      await deleteItem(pair.item2.id);
+    }
+    toast.success(`Merged ${pairs.length} duplicate item${pairs.length === 1 ? '' : 's'}! ✨`);
+  }
+
   async function handleEndOrder(total?: number) {
     await endOrdering(total);
     toast.success('Order placed! Items moved to history 🎉');
@@ -98,6 +113,29 @@ export default function DashboardPage() {
           onViewChecklist={() => setIsChecklistOpen(true)}
           onQuickAdd={() => setIsAddItemOpen(true)}
         />
+
+        {/* Duplicate Items Alert & Merge Banner */}
+        {duplicatePairs.length > 0 && (
+          <div className="mx-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 flex items-center justify-between gap-2.5 text-xs shadow-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl flex-shrink-0">⚠️</span>
+              <div className="min-w-0">
+                <p className="font-bold text-amber-900 dark:text-amber-200 truncate">
+                  {duplicatePairs.length} duplicate item{duplicatePairs.length === 1 ? '' : 's'} detected
+                </p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 truncate">
+                  &quot;{duplicatePairs[0].item1.item_name}&quot; &amp; &quot;{duplicatePairs[0].item2.item_name}&quot;
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleMergeDuplicates}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow-xs flex-shrink-0 transition-transform active:scale-95 cursor-pointer"
+            >
+              Merge All
+            </button>
+          </div>
+        )}
 
         {/* Live Search Bar & Urgent Chip */}
         <div className="px-4 flex items-center gap-2">
@@ -224,6 +262,8 @@ export default function DashboardPage() {
           toast.success(`${payload.item_name} added to list!`);
         }}
         onAddBatch={addBatchItems}
+        onUpdateItem={updateItem}
+        existingItems={items}
       />
 
       <EditItemDrawer
@@ -256,6 +296,7 @@ export default function DashboardPage() {
         items={items}
         platform={session?.platform}
         onUpdateStatus={updateStatus}
+        onUpdateItem={updateItem}
         onEndOrder={handleEndOrder}
       />
 

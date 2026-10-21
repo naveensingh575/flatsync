@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { GroceryItem, ItemStatus, Platform } from '@/types/app.types';
+import { GroceryItem, ItemStatus, Platform, AddItemPayload } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { QUICK_COMMERCE_APPS, openQuickCommerceApp } from '@/lib/quickCommerce';
@@ -20,6 +20,7 @@ interface OrderChecklistViewProps {
   items: GroceryItem[];
   platform?: Platform;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
+  onUpdateItem?: (id: string, updates: Partial<AddItemPayload>) => Promise<void>;
   onEndOrder: (total?: number) => Promise<void>;
 }
 
@@ -29,11 +30,13 @@ export function OrderChecklistView({
   items,
   platform,
   onUpdateStatus,
+  onUpdateItem,
   onEndOrder,
 }: OrderChecklistViewProps) {
   const [totalAmount, setTotalAmount] = useState('');
   const [ending, setEnding] = useState(false);
   const [activePlatform, setActivePlatform] = useState<Platform>(platform || 'blinkit');
+  const [oosItemIds, setOosItemIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (platform && platform !== 'other') {
@@ -80,7 +83,23 @@ export function OrderChecklistView({
 
   async function handleEnd() {
     setEnding(true);
+
+    // Annotate rolled-over Out-of-Stock items so they persist on list
+    if (onUpdateItem && oosItemIds.size > 0) {
+      for (const id of Array.from(oosItemIds)) {
+        const item = items.find((i) => i.id === id);
+        if (item) {
+          const cleanNote = (item.note || '').replace(/\[OOS[^\]]*\]/g, '').trim();
+          const updatedNote = `[OOS on ${activePlatform}] ${cleanNote}`.trim();
+          await onUpdateItem(id, { note: updatedNote });
+        }
+      }
+    }
+
     await onEndOrder(totalAmount ? parseFloat(totalAmount) : undefined);
+    if (oosItemIds.size > 0) {
+      toast.success(`${oosItemIds.size} out-of-stock items rolled over to list 🔁`);
+    }
     setEnding(false);
     onClose();
   }
@@ -170,6 +189,7 @@ export function OrderChecklistView({
             {items.map((item) => {
               const catMeta = ITEM_CATEGORIES.find((c) => c.value === item.category);
               const isInCart = item.status === 'in_cart';
+              const isOos = oosItemIds.has(item.id);
               const requester = item.requested_by?.name || 'Someone';
 
               return (
@@ -181,16 +201,26 @@ export function OrderChecklistView({
                   exit={{ opacity: 0, x: 10 }}
                   className={cn(
                     'flex items-center gap-3 p-3 rounded-xl border transition-all',
-                    isInCart
+                    isOos
+                      ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900/60'
+                      : isInCart
                       ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
                       : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
                   )}
                 >
                   <button
-                    onClick={() =>
-                      onUpdateStatus(item.id, isInCart ? 'pending' : 'in_cart')
-                    }
+                    onClick={() => {
+                      if (isOos) {
+                        setOosItemIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(item.id);
+                          return next;
+                        });
+                      }
+                      onUpdateStatus(item.id, isInCart ? 'pending' : 'in_cart');
+                    }}
                     className="flex-shrink-0"
+                    title={isInCart ? 'Remove from cart' : 'Bag item into cart'}
                   >
                     <motion.div
                       animate={{ scale: isInCart ? 1 : 0.9 }}
@@ -208,7 +238,11 @@ export function OrderChecklistView({
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       'font-medium text-sm',
-                      isInCart ? 'line-through text-zinc-400' : 'text-zinc-900 dark:text-white'
+                      isOos
+                        ? 'line-through text-rose-500/80 dark:text-rose-400/80'
+                        : isInCart
+                        ? 'line-through text-zinc-400'
+                        : 'text-zinc-900 dark:text-white'
                     )}>
                       {item.item_name}
                     </p>
@@ -217,6 +251,11 @@ export function OrderChecklistView({
                       {item.quantity && (
                         <span className="text-xs text-zinc-400">{item.quantity}</span>
                       )}
+                      {isOos ? (
+                        <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.2 rounded">
+                          ❌ Out of Stock
+                        </span>
+                      ) : null}
                       {item.is_urgent && (
                         <Badge variant="urgent" className="text-[10px] px-1.5 py-0">Urgent</Badge>
                       )}
@@ -228,11 +267,34 @@ export function OrderChecklistView({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Actions & Requester */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOosItemIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(item.id)) {
+                            next.delete(item.id);
+                          } else {
+                            next.add(item.id);
+                            if (isInCart) onUpdateStatus(item.id, 'pending');
+                          }
+                          return next;
+                        });
+                      }}
+                      className={cn(
+                        'text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors flex items-center gap-0.5 cursor-pointer',
+                        isOos
+                          ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                          : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
+                      )}
+                      title={isOos ? 'Restore item as available' : 'Mark Out of Stock on this app'}
+                    >
+                      {isOos ? '❌ OOS' : 'OOS?'}
+                    </button>
+
                     <Avatar name={requester} id={item.requested_by_id} size="sm" />
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[70px] truncate">
-                      {requester}
-                    </span>
                   </div>
                 </motion.div>
               );

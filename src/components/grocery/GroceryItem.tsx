@@ -185,6 +185,13 @@ export function GroceryItemCard({
               </Badge>
             )}
 
+            {/* Out of Stock Rollover Badge */}
+            {item.note && item.note.includes('[OOS') && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                ⚠️ {item.note.match(/\[OOS[^\]]*\]/)?.[0]?.replace(/[\[\]]/g, '') || 'OOS'}
+              </span>
+            )}
+
             {/* Status */}
             {item.status === 'in_cart' && (
               <Badge className={statusMeta.color}>
