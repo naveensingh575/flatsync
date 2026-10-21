@@ -14,26 +14,75 @@ export function useFlat(flatId?: string) {
 
   const [groupMembersMap, setGroupMembersMap] = useState<Record<string, Profile[]>>({});
 
-  // Fetch all groups the current user belongs to
+  // Fetch all groups the current user belongs to (multi-source & self-healing)
   const fetchUserGroups = useCallback(async () => {
     if (!profile?.id) return;
 
     try {
-      // 1. Fetch from group_members junction table
-      const { data: memberRows, error } = await supabase
-        .from('group_members')
-        .select('group_id, flats(*)')
-        .eq('user_id', profile.id);
+      const candidateGroupIds = new Set<string>();
 
-      let groups: Flat[] = [];
+      // 1. Collect group IDs from group_members junction table
+      try {
+        const { data: memberRows, error: memberErr } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', profile.id);
 
-      if (!error && memberRows && memberRows.length > 0) {
-        groups = memberRows
-          .map((row: any) => row.flats)
-          .filter(Boolean) as Flat[];
+        if (!memberErr && memberRows) {
+          memberRows.forEach((r) => {
+            if (r.group_id) candidateGroupIds.add(r.group_id);
+          });
+        }
+      } catch (_) {}
+
+      // 2. Always include profile.flat_id if present
+      if (profile.flat_id) {
+        candidateGroupIds.add(profile.flat_id);
       }
 
-      // 2. Fallback to profile.flat_id if group_members isn't populated yet
+      // 3. Always include currently active flatId if provided
+      if (flatId) {
+        candidateGroupIds.add(flatId);
+      }
+
+      // 4. Preserve any groups already cached in local store
+      if (userGroups && userGroups.length > 0) {
+        userGroups.forEach((g) => {
+          if (g.id) candidateGroupIds.add(g.id);
+        });
+      }
+
+      // 5. Check items table for any groups this user created/requested items in
+      try {
+        const { data: userItems } = await supabase
+          .from('items')
+          .select('flat_id')
+          .eq('requested_by_id', profile.id)
+          .limit(20);
+
+        if (userItems) {
+          userItems.forEach((i) => {
+            if (i.flat_id) candidateGroupIds.add(i.flat_id);
+          });
+        }
+      } catch (_) {}
+
+      const idsToFetch = Array.from(candidateGroupIds);
+      let groups: Flat[] = [];
+
+      // 6. Fetch full details for all discovered groups
+      if (idsToFetch.length > 0) {
+        const { data: fetchedFlats } = await supabase
+          .from('flats')
+          .select('*')
+          .in('id', idsToFetch);
+
+        if (fetchedFlats && fetchedFlats.length > 0) {
+          groups = fetchedFlats as Flat[];
+        }
+      }
+
+      // Fallback: If still empty, check flats directly by profile.flat_id
       if (groups.length === 0 && profile.flat_id) {
         const { data: directFlat } = await supabase
           .from('flats')
@@ -46,20 +95,41 @@ export function useFlat(flatId?: string) {
         }
       }
 
-      setUserGroups(groups);
+      // 7. Deduplicate groups by ID
+      const uniqueGroupMap = new Map<string, Flat>();
+      groups.forEach((g) => {
+        if (g && g.id) uniqueGroupMap.set(g.id, g);
+      });
+      const finalGroups = Array.from(uniqueGroupMap.values());
 
-      // 3. Fetch members for all user groups
-      const groupIds = groups.map((g) => g.id);
+      setUserGroups(finalGroups);
+
+      // 8. Auto-heal: Ensure all user groups are persisted in group_members
+      finalGroups.forEach(async (g) => {
+        try {
+          await supabase.from('group_members').upsert(
+            { group_id: g.id, user_id: profile.id, role: 'member' },
+            { onConflict: 'group_id,user_id' }
+          );
+        } catch (_) {}
+      });
+
+      // 9. Fetch members for all user groups
+      const groupIds = finalGroups.map((g) => g.id);
       if (groupIds.length > 0) {
         const [junctionRes, legacyRes] = await Promise.all([
-          supabase
-            .from('group_members')
-            .select('group_id, user_id, profiles(*)')
-            .in('group_id', groupIds),
-          supabase
-            .from('profiles')
-            .select('*')
-            .in('flat_id', groupIds),
+          Promise.resolve(
+            supabase
+              .from('group_members')
+              .select('group_id, user_id, profiles(*)')
+              .in('group_id', groupIds)
+          ).catch(() => ({ data: [] })),
+          Promise.resolve(
+            supabase
+              .from('profiles')
+              .select('*')
+              .in('flat_id', groupIds)
+          ).catch(() => ({ data: [] })),
         ]);
 
         const map: Record<string, Map<string, Profile>> = {};
@@ -68,14 +138,14 @@ export function useFlat(flatId?: string) {
         });
 
         // Add legacy
-        (legacyRes.data || []).forEach((p: Profile) => {
+        ((legacyRes as any)?.data || []).forEach((p: Profile) => {
           if (p.flat_id && map[p.flat_id]) {
             map[p.flat_id].set(p.id, p);
           }
         });
 
         // Add junction
-        (junctionRes.data || []).forEach((row: any) => {
+        ((junctionRes as any)?.data || []).forEach((row: any) => {
           if (row.group_id && row.profiles && map[row.group_id]) {
             map[row.group_id].set(row.user_id, row.profiles as Profile);
           }
@@ -99,7 +169,7 @@ export function useFlat(flatId?: string) {
     } catch (e) {
       console.error('Error fetching user groups:', e);
     }
-  }, [profile, setUserGroups]);
+  }, [profile, flatId, userGroups, setUserGroups]);
 
   // Leave a group
   async function leaveGroup(targetGroupId: string): Promise<boolean> {

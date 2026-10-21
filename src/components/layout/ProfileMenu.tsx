@@ -47,7 +47,7 @@ interface ProfileMenuProps {
 
 export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: ProfileMenuProps) {
   const router = useRouter();
-  const { profile } = useAppStore();
+  const { profile, userGroups } = useAppStore();
   const { signOut } = useAuth();
   const supabase = createClient();
 
@@ -238,27 +238,36 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   }
 
   // Refer / Share FlatSync helpers
-  function handleShareReferralWhatsApp() {
+  function getReferralUrl() {
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
-    const message = `🛒 FlatSync makes shared grocery runs so easy! Add items together, get live ordering alerts, and dispatch to Blinkit & Zepto:\n\n👉 ${siteUrl}`;
+    const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
+    const codeQuery = activeGroup?.join_code ? `?code=${activeGroup.join_code}` : '';
+    return `${siteUrl}/register${codeQuery}`;
+  }
+
+  function handleShareReferralWhatsApp() {
+    const regUrl = getReferralUrl();
+    const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
+    const groupText = activeGroup?.name ? ` to join "${activeGroup.name}"` : '';
+    const message = `🛒 FlatSync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   }
 
   function handleCopyReferralLink() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
-    navigator.clipboard.writeText(siteUrl);
+    const regUrl = getReferralUrl();
+    navigator.clipboard.writeText(regUrl);
     toast.success('Referral link copied to clipboard! 📋');
   }
 
   async function handleNativeReferralShare() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const regUrl = getReferralUrl();
     const message = `🛒 FlatSync — Shared grocery dispatch with flatmates & family`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: 'FlatSync',
+          title: 'FlatSync — Create Account',
           text: message,
-          url: siteUrl,
+          url: regUrl,
         });
       } catch {
         // User dismissed share dialog

@@ -81,9 +81,11 @@ export function useAuth() {
     return () => listener.subscription.unsubscribe();
   }, [setProfile]);
 
-  async function signIn(email: string, password: string) {
+  async function signIn(email: string, password: string, explicitCode?: string) {
     const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+
+    let targetFlatId: string | null = null;
 
     if (authData.user) {
       const { data: userProfile } = await supabase
@@ -105,12 +107,53 @@ export function useAuth() {
         flat_id: userProfile?.flat_id || null,
         joined_at: userProfile?.joined_at || new Date().toISOString(),
       });
+
+      // 1. Check if user already has groups in group_members or profile
+      try {
+        const { data: memberRows } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', authData.user.id)
+          .limit(1);
+
+        if (memberRows && memberRows.length > 0 && memberRows[0].group_id) {
+          targetFlatId = memberRows[0].group_id;
+        } else if (userProfile?.flat_id) {
+          targetFlatId = userProfile.flat_id;
+        }
+      } catch (err) {
+        // Fallback to profile flat_id
+        if (userProfile?.flat_id) {
+          targetFlatId = userProfile.flat_id;
+        }
+      }
     }
 
+    // 2. Check for pending group code (from referral or invite link)
+    let pendingCode = explicitCode;
+    if (!pendingCode && typeof window !== 'undefined') {
+      pendingCode = localStorage.getItem('flatsync_pending_code') || undefined;
+      if (pendingCode) {
+        localStorage.removeItem('flatsync_pending_code');
+      }
+    }
+
+    if (pendingCode) {
+      router.push(`/onboarding?code=${encodeURIComponent(pendingCode.trim().toUpperCase())}`);
+      return;
+    }
+
+    // 3. If user already belongs to at least one group, go directly to their flat
+    if (targetFlatId) {
+      router.push(`/flat/${targetFlatId}`);
+      return;
+    }
+
+    // 4. Otherwise, only new users without any group go to onboarding
     router.push('/onboarding');
   }
 
-  async function signUp(email: string, password: string, name: string) {
+  async function signUp(email: string, password: string, name: string, pendingCode?: string) {
     const trimmedName = name.trim();
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -131,9 +174,20 @@ export function useAuth() {
       };
 
       await supabase.from('profiles').upsert(newProfile);
-      setProfile(newProfile);
     }
-    router.push('/onboarding');
+
+    // Ensure session is cleanly signed out so user signs in with credentials
+    await supabase.auth.signOut();
+    setProfile(null);
+
+    // Preserve pending code if provided
+    let codeParam = pendingCode;
+    if (!codeParam && typeof window !== 'undefined') {
+      codeParam = localStorage.getItem('flatsync_pending_code') || undefined;
+    }
+
+    const codeQuery = codeParam ? `&code=${encodeURIComponent(codeParam.trim().toUpperCase())}` : '';
+    router.push(`/login?email=${encodeURIComponent(email)}&registered=true${codeQuery}`);
   }
 
   async function signOut() {

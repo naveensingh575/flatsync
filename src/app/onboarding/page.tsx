@@ -19,7 +19,7 @@ type Mode = 'choose' | 'create' | 'join';
 function OnboardingContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
-  const { profile, userGroups } = useAppStore();
+  const { profile, setProfile, userGroups, setUserGroups } = useAppStore();
   const router = useRouter();
 
   const [mode, setMode] = useState<Mode>('choose');
@@ -61,15 +61,28 @@ function OnboardingContent() {
 
       if (error) throw error;
 
-      // Add to group_members junction table
-      await supabase.from('group_members').insert({
-        group_id: group.id,
-        user_id: profile.id,
-        role: 'admin',
-      });
+      // 1. Preserve previous group in group_members if present
+      if (profile.flat_id && profile.flat_id !== group.id) {
+        try {
+          await supabase.from('group_members').upsert(
+            { group_id: profile.flat_id, user_id: profile.id, role: 'member' },
+            { onConflict: 'group_id,user_id' }
+          );
+        } catch (_) {}
+      }
 
-      // Update legacy profile.flat_id as default
+      // 2. Add new group to group_members junction table
+      await supabase.from('group_members').upsert(
+        { group_id: group.id, user_id: profile.id, role: 'admin' },
+        { onConflict: 'group_id,user_id' }
+      );
+
+      // 3. Update legacy profile.flat_id as default
       await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+
+      // 4. Update local app store immediately
+      setUserGroups([...userGroups.filter((g) => g.id !== group.id), group]);
+      setProfile({ ...profile, flat_id: group.id });
 
       toast.success(`${group.name} created! Code: ${code}`);
       router.push(`/flat/${group.id}`);
@@ -94,15 +107,28 @@ function OnboardingContent() {
 
       if (error || !group) throw new Error('Invalid code. Check with group members!');
 
-      // Add to group_members table
-      await supabase.from('group_members').upsert({
-        group_id: group.id,
-        user_id: profile.id,
-        role: 'member',
-      });
+      // 1. Preserve previous group in group_members if present
+      if (profile.flat_id && profile.flat_id !== group.id) {
+        try {
+          await supabase.from('group_members').upsert(
+            { group_id: profile.flat_id, user_id: profile.id, role: 'member' },
+            { onConflict: 'group_id,user_id' }
+          );
+        } catch (_) {}
+      }
 
-      // Update legacy profile.flat_id
+      // 2. Add to group_members table
+      await supabase.from('group_members').upsert(
+        { group_id: group.id, user_id: profile.id, role: 'member' },
+        { onConflict: 'group_id,user_id' }
+      );
+
+      // 3. Update legacy profile.flat_id
       await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+
+      // 4. Update local app store immediately
+      setUserGroups([...userGroups.filter((g) => g.id !== group.id), group]);
+      setProfile({ ...profile, flat_id: group.id });
 
       toast.success(`Joined ${group.name}! 🎉`);
       router.push(`/flat/${group.id}`);
