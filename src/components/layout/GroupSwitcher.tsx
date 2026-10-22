@@ -15,7 +15,7 @@ interface GroupSwitcherProps {
 
 export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
   const router = useRouter();
-  const { userGroups, groupMembersMap, leaveGroup, deleteGroup } = useFlat(currentFlat?.id);
+  const { userGroups, groupMembersMap, isAdmin, makeAdmin, leaveGroup, deleteGroup } = useFlat(currentFlat?.id);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -122,12 +122,14 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
                   group={group}
                   members={groupMembersMap[group.id] || []}
                   isActive={group.id === currentFlat?.id}
+                  isAdmin={isAdmin(group.id)}
                   onSelectGroup={(id) => {
                     setIsOpen(false);
                     router.push(`/flat/${id}`);
                   }}
                   onLeaveGroup={handleLeaveGroup}
                   onDeleteGroup={handleDeleteGroup}
+                  onMakeAdmin={(userId) => makeAdmin(group.id, userId)}
                 />
               ))}
 

@@ -46,14 +46,24 @@ export function useOrderingStatus(flatId: string) {
   const fetchSession = useCallback(async () => {
     if (!flatId) return;
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('ordering_sessions')
         .select('*, buyer:profiles!ordering_sessions_buyer_id_fkey(*)')
-        .eq('flat_id', flatId)
+        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
         .eq('is_active', true)
         .maybeSingle();
 
-      const s = (data as OrderingSession) ?? null;
+      let s = (data as OrderingSession) ?? null;
+
+      if (error) {
+        const fallback = await supabase
+          .from('ordering_sessions')
+          .select('*, buyer:profiles!ordering_sessions_buyer_id_fkey(*)')
+          .eq('flat_id', flatId)
+          .eq('is_active', true)
+          .maybeSingle();
+        s = (fallback.data as OrderingSession) ?? null;
+      }
 
       // Auto-expire sessions older than 10 minutes without showing counter
       if (s && s.started_at) {

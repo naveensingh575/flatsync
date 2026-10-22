@@ -24,16 +24,55 @@ export function useGroceryList(flatId: string) {
   const fetchItems = useCallback(async () => {
     if (!flatId) return;
     try {
+      let fetchedItems: any[] = [];
+
+      // 1. Fetch items matching group_id or flat_id
       const { data, error } = await supabase
         .from('items')
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
-        .eq('flat_id', flatId)
+        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
         .in('status', ['pending', 'in_cart'])
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        setItems(data as GroceryItem[]);
+      if (error) {
+        // Fallback without .or() in case group_id column is pending migration
+        const fallbackRes = await supabase
+          .from('items')
+          .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
+          .eq('flat_id', flatId)
+          .in('status', ['pending', 'in_cart'])
+          .order('created_at', { ascending: false });
+
+        fetchedItems = fallbackRes.data || [];
+      } else {
+        fetchedItems = data || [];
       }
+
+      // 2. Fetch profiles for any editors (last_edited_by_id)
+      const editorIds = Array.from(
+        new Set(
+          fetchedItems
+            .map((i) => i.last_edited_by_id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+
+      if (editorIds.length > 0) {
+        const { data: editorProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', editorIds);
+
+        const editorMap = new Map((editorProfiles || []).map((p) => [p.id, p]));
+        fetchedItems = fetchedItems.map((item) => ({
+          ...item,
+          last_edited_by: item.last_edited_by_id
+            ? editorMap.get(item.last_edited_by_id) || (item.last_edited_by_id === item.requested_by_id ? item.requested_by : undefined)
+            : undefined,
+        }));
+      }
+
+      setItems(fetchedItems as GroceryItem[]);
     } catch (e) {
       console.error('Error fetching items:', e);
     } finally {
@@ -262,11 +301,23 @@ export function useGroceryList(flatId: string) {
     }
   }
 
-  // 100% Optimistic Update Item
+  // 100% Optimistic Update Item (tracks who edited)
   async function updateItem(itemId: string, updates: Partial<AddItemPayload>) {
     const previous = itemsRef.current;
+    const editorId = profile?.id;
+
     setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, ...updates } : i))
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              ...updates,
+              last_edited_by_id: editorId || i.last_edited_by_id,
+              last_edited_by: profile || i.last_edited_by,
+              updated_at: new Date().toISOString(),
+            }
+          : i
+      )
     );
 
     // If it's a temporary local item that hasn't synced an ID yet, update is already applied locally
@@ -275,18 +326,26 @@ export function useGroceryList(flatId: string) {
     }
 
     try {
+      const updatePayload: any = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      if (editorId) {
+        updatePayload.last_edited_by_id = editorId;
+      }
+
       const { error } = await supabase
         .from('items')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', itemId);
 
       if (error) {
         console.warn('Update item error, trying fallback:', error);
-        // Fallback: strip fields like for_user or special columns if not supported
-        const { for_user, ...cleanUpdates } = updates as any;
+        // Fallback: strip fields like last_edited_by_id or for_user if column pending migration
+        const { last_edited_by_id, for_user, ...cleanUpdates } = updatePayload;
         const fallbackRes = await supabase
           .from('items')
-          .update({ ...cleanUpdates, updated_at: new Date().toISOString() })
+          .update(cleanUpdates)
           .eq('id', itemId);
 
         if (fallbackRes.error) {
@@ -297,7 +356,6 @@ export function useGroceryList(flatId: string) {
       }
     } catch (err: any) {
       console.error('Network update error:', err);
-      // Keep optimistic changes
     }
   }
 

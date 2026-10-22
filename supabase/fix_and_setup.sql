@@ -176,3 +176,24 @@ $$;
 
 -- Grant execution permissions to anon and authenticated
 GRANT EXECUTE ON FUNCTION public.check_user_exists(TEXT) TO anon, authenticated;
+
+-- 13. Groups table alias & Admin permissions
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS created_by UUID;
+
+CREATE TABLE IF NOT EXISTS public.groups (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name       TEXT NOT NULL,
+  join_code  CHAR(6) UNIQUE NOT NULL,
+  group_type TEXT DEFAULT 'flat',
+  icon       TEXT DEFAULT '🏠',
+  created_by UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE OR REPLACE VIEW public.flats AS SELECT * FROM public.groups;
+
+ALTER TABLE items ADD COLUMN IF NOT EXISTS group_id UUID;
+ALTER TABLE items ADD COLUMN IF NOT EXISTS last_edited_by_id UUID;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS group_id UUID;
+ALTER TABLE ordering_sessions ADD COLUMN IF NOT EXISTS group_id UUID;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_id UUID;

@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const routeParams = useParams();
   const flatId = (routeParams?.flatId as string) || '';
-  const { flat, groupMembersMap, leaveGroup, deleteGroup } = useFlat(flatId);
+  const { flat, groupMembersMap, isAdmin, makeAdmin, leaveGroup, deleteGroup } = useFlat(flatId);
   const { userGroups } = useAppStore();
 
   async function handleLeaveGroup(groupId: string) {
@@ -64,9 +64,11 @@ export default function SettingsPage() {
                 group={g}
                 members={groupMembersMap[g.id] || []}
                 isActive={g.id === flatId}
+                isAdmin={isAdmin(g.id)}
                 onSelectGroup={(id) => router.push(`/flat/${id}`)}
                 onLeaveGroup={handleLeaveGroup}
                 onDeleteGroup={handleDeleteGroup}
+                onMakeAdmin={(userId) => makeAdmin(g.id, userId)}
               />
             ))}
           </div>

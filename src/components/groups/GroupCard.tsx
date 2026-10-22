@@ -23,18 +23,22 @@ interface GroupCardProps {
   group: Flat;
   members?: Profile[];
   isActive: boolean;
+  isAdmin?: boolean;
   onSelectGroup?: (groupId: string) => void;
   onLeaveGroup?: (groupId: string) => Promise<boolean>;
   onDeleteGroup?: (groupId: string) => Promise<boolean>;
+  onMakeAdmin?: (userId: string) => Promise<boolean>;
 }
 
 export function GroupCard({
   group,
   members = [],
   isActive,
+  isAdmin = false,
   onSelectGroup,
   onLeaveGroup,
   onDeleteGroup,
+  onMakeAdmin,
 }: GroupCardProps) {
   const router = useRouter();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -161,18 +165,40 @@ export function GroupCard({
         {/* Member Avatars Row */}
         <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
           {members.length > 0 ? (
-            members.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-750 text-xs shadow-2xs"
-                title={m.name}
-              >
-                <Avatar name={m.name} src={m.avatar_url} id={m.id} size="sm" />
-                <span className="font-medium text-zinc-800 dark:text-zinc-200 max-w-[85px] truncate">
-                  {m.name}
-                </span>
-              </div>
-            ))
+            members.map((m) => {
+              const memberIsAdmin = m.role === 'admin';
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-750 text-xs shadow-2xs"
+                  title={m.name}
+                >
+                  <Avatar name={m.name} src={m.avatar_url} id={m.id} size="sm" />
+                  <span className="font-medium text-zinc-800 dark:text-zinc-200 max-w-[85px] truncate">
+                    {m.name}
+                  </span>
+                  {memberIsAdmin ? (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-0.5">
+                      ⭐ Admin
+                    </span>
+                  ) : (
+                    isAdmin && onMakeAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMakeAdmin(m.id);
+                        }}
+                        className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer pl-0.5"
+                        title="Promote this member to Admin"
+                      >
+                        + Make Admin
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })
           ) : (
             <span className="text-[11px] text-zinc-400 italic px-1">
               No other members yet
@@ -223,7 +249,7 @@ export function GroupCard({
           </button>
         </div>
 
-        {/* Group Actions: Leave & Delete */}
+        {/* Group Actions: Leave & Delete (Delete is Admin Special Power!) */}
         <div className="flex items-center justify-end gap-2 pt-1">
           {onLeaveGroup && (
             <button
@@ -236,11 +262,12 @@ export function GroupCard({
             </button>
           )}
 
-          {onDeleteGroup && (
+          {isAdmin && onDeleteGroup && (
             <button
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-1 text-[11px] font-medium text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              title="Delete group (Admin only)"
             >
               <Trash2 size={12} />
               <span>Delete Group</span>

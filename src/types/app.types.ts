@@ -18,6 +18,7 @@ export interface Flat {
   join_code: string;
   group_type?: GroupType;
   icon?: string;
+  created_by?: string | null;
   created_at: string;
 }
 
@@ -38,15 +39,20 @@ export interface Profile {
   name: string;
   avatar_url: string | null;
   flat_id: string | null;
+  group_id?: string | null;
   joined_at: string;
   email?: string | null;
+  role?: 'admin' | 'member';
 }
 
 export interface GroceryItem {
   id: string;
   flat_id: string;
+  group_id?: string;
   requested_by_id: string;
   requested_by?: Profile;
+  last_edited_by_id?: string | null;
+  last_edited_by?: Profile;
   for_user?: string | null;
   item_name: string;
   category: ItemCategory;
@@ -63,6 +69,7 @@ export interface GroceryItem {
 export interface OrderingSession {
   id: string;
   flat_id: string;
+  group_id?: string;
   buyer_id: string;
   buyer?: Profile;
   platform: Platform;
@@ -74,6 +81,7 @@ export interface OrderingSession {
 export interface Order {
   id: string;
   flat_id: string;
+  group_id?: string;
   buyer_id: string;
   buyer?: Profile;
   session_id: string | null;
@@ -88,6 +96,7 @@ export interface Settlement {
   id: string;
   order_id: string;
   flat_id: string;
+  group_id?: string;
   ower_id: string;
   ower?: Profile;
   owed_to_id: string;
@@ -101,4 +110,6 @@ export interface Settlement {
 export type AddItemPayload = Pick<
   GroceryItem,
   'item_name' | 'category' | 'is_urgent' | 'quantity' | 'note' | 'for_user'
->;
+> & {
+  last_edited_by_id?: string | null;
+};

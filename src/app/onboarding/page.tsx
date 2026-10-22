@@ -63,18 +63,37 @@ function OnboardingContent() {
     setLoading(true);
     try {
       const code = generateJoinCode();
-      const { data: group, error } = await supabase
+      let group: any = null;
+      const { data: newGroup, error } = await supabase
         .from('flats')
         .insert({
           name: groupName.trim(),
           join_code: code,
           group_type: selectedType,
           icon: activeGroupType.emoji,
+          created_by: profile.id,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Fallback without created_by if database column is pending migration
+        const fallback = await supabase
+          .from('flats')
+          .insert({
+            name: groupName.trim(),
+            join_code: code,
+            group_type: selectedType,
+            icon: activeGroupType.emoji,
+          })
+          .select()
+          .single();
+
+        if (fallback.error) throw fallback.error;
+        group = fallback.data;
+      } else {
+        group = newGroup;
+      }
 
       // 1. Preserve previous group in group_members if present
       if (profile.flat_id && profile.flat_id !== group.id) {

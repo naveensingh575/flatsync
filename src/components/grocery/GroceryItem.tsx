@@ -248,13 +248,18 @@ export function GroceryItemCard({
             )}
           </div>
 
-          {/* Prominent Requester Attribution */}
+          {/* Prominent Requester Attribution & Editor Attribution */}
           <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800/60">
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
               <Avatar name={requesterName} id={item.requested_by_id} size="sm" />
               <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 truncate">
                 {requesterName}
               </span>
+              {item.last_edited_by_id && item.last_edited_by_id !== item.requested_by_id && (
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal">
+                  · edited by <span className="font-medium text-zinc-600 dark:text-zinc-300">{item.last_edited_by?.name || 'member'}</span>
+                </span>
+              )}
             </div>
             <span className="text-[11px] text-zinc-400 flex-shrink-0">
               {timeAgo(item.created_at)}

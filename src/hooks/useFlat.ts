@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Flat, Profile } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
+import toast from 'react-hot-toast';
 
 export function useFlat(flatId?: string) {
   const supabase = createClient();
@@ -140,14 +141,19 @@ export function useFlat(flatId?: string) {
         // Add legacy
         ((legacyRes as any)?.data || []).forEach((p: Profile) => {
           if (p.flat_id && map[p.flat_id]) {
-            map[p.flat_id].set(p.id, p);
+            map[p.flat_id].set(p.id, { ...p, role: 'member' });
           }
         });
 
-        // Add junction
+        // Add junction with role
         ((junctionRes as any)?.data || []).forEach((row: any) => {
           if (row.group_id && row.profiles && map[row.group_id]) {
-            map[row.group_id].set(row.user_id, row.profiles as Profile);
+            const currentGroup = finalGroups.find((g) => g.id === row.group_id);
+            const isCreator = currentGroup?.created_by === row.user_id;
+            map[row.group_id].set(row.user_id, {
+              ...(row.profiles as Profile),
+              role: isCreator ? 'admin' : (row.role || 'member'),
+            });
           }
         });
 
@@ -155,7 +161,13 @@ export function useFlat(flatId?: string) {
         if (profile) {
           groupIds.forEach((gid) => {
             if (map[gid]) {
-              map[gid].set(profile.id, profile);
+              const currentGroup = finalGroups.find((g) => g.id === gid);
+              const existing = map[gid].get(profile.id);
+              const isCreator = currentGroup?.created_by === profile.id;
+              map[gid].set(profile.id, {
+                ...profile,
+                role: isCreator ? 'admin' : (existing?.role || 'member'),
+              });
             }
           });
         }
@@ -170,6 +182,64 @@ export function useFlat(flatId?: string) {
       console.error('Error fetching user groups:', e);
     }
   }, [profile, flatId, userGroups, setUserGroups]);
+
+  // Check if current user is an admin of the specified group (or active group)
+  function isAdmin(targetGroupId?: string): boolean {
+    const gid = targetGroupId || flatId;
+    if (!gid || !profile?.id) return false;
+
+    // Check if creator of group
+    const currentGroup = userGroups.find((g) => g.id === gid) || flat;
+    if (currentGroup?.created_by === profile.id) return true;
+
+    // Check role in groupMembersMap
+    const membersList = groupMembersMap[gid] || members;
+    const self = membersList.find((m) => m.id === profile.id);
+    return self?.role === 'admin';
+  }
+
+  // Promote a member to admin
+  async function makeAdmin(targetGroupId: string, targetUserId: string): Promise<boolean> {
+    if (!profile?.id) return false;
+    if (!isAdmin(targetGroupId)) {
+      toast.error('Only group admins can make other members admin.');
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('group_members')
+        .update({ role: 'admin' })
+        .eq('group_id', targetGroupId)
+        .eq('user_id', targetUserId);
+
+      if (error) throw error;
+
+      // Optimistically update groupMembersMap & members state
+      setGroupMembersMap((prev) => {
+        const list = prev[targetGroupId] || [];
+        return {
+          ...prev,
+          [targetGroupId]: list.map((m) =>
+            m.id === targetUserId ? { ...m, role: 'admin' } : m
+          ),
+        };
+      });
+
+      if (targetGroupId === flatId) {
+        setMembers((prev) =>
+          prev.map((m) => (m.id === targetUserId ? { ...m, role: 'admin' } : m))
+        );
+      }
+
+      toast.success('Member promoted to Admin! 🛡️');
+      return true;
+    } catch (err: any) {
+      console.error('Error promoting member to admin:', err);
+      toast.error(err.message || 'Failed to promote member to admin');
+      return false;
+    }
+  }
 
   // Leave a group
   async function leaveGroup(targetGroupId: string): Promise<boolean> {
@@ -198,22 +268,37 @@ export function useFlat(flatId?: string) {
     }
   }
 
-  // Delete a group
+  // Delete a group (ADMIN SPECIAL POWER)
   async function deleteGroup(targetGroupId: string): Promise<boolean> {
     if (!profile?.id) return false;
+
+    // Check admin permissions
+    if (!isAdmin(targetGroupId)) {
+      toast.error('Only group admins have permission to delete this group.');
+      return false;
+    }
+
     try {
-      const { error } = await supabase
-        .from('flats')
+      // 1. Try deleting from groups first, fallback to flats
+      const { error: groupErr } = await supabase
+        .from('groups')
         .delete()
         .eq('id', targetGroupId);
 
-      if (error) {
-        // Fallback: remove current user membership
-        await supabase
-          .from('group_members')
+      if (groupErr) {
+        const { error: flatErr } = await supabase
+          .from('flats')
           .delete()
-          .eq('group_id', targetGroupId);
+          .eq('id', targetGroupId);
+
+        if (flatErr) throw flatErr;
       }
+
+      // Also clean up junction entries
+      await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', targetGroupId);
 
       if (profile.flat_id === targetGroupId) {
         const remaining = userGroups.filter((g) => g.id !== targetGroupId);
@@ -225,9 +310,11 @@ export function useFlat(flatId?: string) {
       }
 
       await fetchUserGroups();
+      toast.success('Group deleted successfully');
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting group:', err);
+      toast.error(err.message || 'Failed to delete group');
       return false;
     }
   }
@@ -250,12 +337,20 @@ export function useFlat(flatId?: string) {
 
       const memberMap = new Map<string, Profile>();
 
+      // Role lookup from junction
+      const roleMap = new Map<string, 'admin' | 'member'>();
+      (junctionRows.data ?? []).forEach((r: any) => {
+        if (r.user_id) roleMap.set(r.user_id, r.role || 'member');
+      });
+
       // 1. Add legacy members from profiles.flat_id
       ((legacyMembersRes.data as Profile[]) ?? []).forEach((m) => {
         if (m && m.id) {
+          const isCreator = flatRes.data?.created_by === m.id;
           memberMap.set(m.id, {
             ...m,
             name: m.name || 'Member',
+            role: isCreator ? 'admin' : (roleMap.get(m.id) || 'member'),
           });
         }
       });
@@ -273,9 +368,11 @@ export function useFlat(flatId?: string) {
 
         (junctionProfiles ?? []).forEach((p: Profile) => {
           if (p && p.id) {
+            const isCreator = flatRes.data?.created_by === p.id;
             memberMap.set(p.id, {
               ...p,
               name: p.name || 'Member',
+              role: isCreator ? 'admin' : (roleMap.get(p.id) || 'member'),
             });
           }
         });
@@ -283,11 +380,14 @@ export function useFlat(flatId?: string) {
 
       // 3. Ensure current profile is present if they belong to this group
       if (profile?.id && profile.name) {
+        const isCreator = flatRes.data?.created_by === profile.id;
+        const assignedRole: 'admin' | 'member' = isCreator ? 'admin' : (roleMap.get(profile.id) || 'member');
+
         if (memberMap.has(profile.id)) {
           const current = memberMap.get(profile.id)!;
-          memberMap.set(profile.id, { ...current, name: profile.name });
+          memberMap.set(profile.id, { ...current, name: profile.name, role: assignedRole });
         } else if (flatRes.data?.id === flatId) {
-          memberMap.set(profile.id, profile);
+          memberMap.set(profile.id, { ...profile, role: assignedRole });
         }
       }
 
@@ -314,6 +414,8 @@ export function useFlat(flatId?: string) {
     loading,
     userGroups,
     groupMembersMap,
+    isAdmin,
+    makeAdmin,
     leaveGroup,
     deleteGroup,
     refetchGroups: fetchUserGroups,
