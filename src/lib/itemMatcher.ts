@@ -67,27 +67,249 @@ export function findSimilarItem(
   return null;
 }
 
+export interface ParsedQuantity {
+  amount: number;
+  unitType: 'weight' | 'volume' | 'count' | 'unknown';
+  normalizedUnit: string;
+  baseValue: number; // in grams for weight, ml for volume, count for count
+  originalUnit: string;
+}
+
 /**
- * Intelligently increments a quantity string
- * e.g. "1 kg" -> "2 kg", "2 packets" -> "3 packets", "500ml" -> "500ml (+1)", null -> "2 pcs"
+ * Parses any raw quantity string (e.g. "500g", "1.5 kg", "500 ml", "1 L", "2 packets", "3")
+ */
+export function parseQuantity(raw: string | null | undefined): ParsedQuantity | null {
+  if (!raw || !raw.trim()) return null;
+  const str = raw.trim().toLowerCase();
+
+  const match = str.match(/^(\d+(?:\.\d+)?)\s*([a-z]*)$/i);
+  if (!match) return null;
+
+  const amount = parseFloat(match[1]);
+  if (isNaN(amount) || amount <= 0) return null;
+  const unit = match[2].trim();
+
+  // Weight units -> baseValue in grams (g)
+  if (/^(g|gm|gms|gram|grams)$/.test(unit)) {
+    return { amount, unitType: 'weight', normalizedUnit: 'g', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(kg|kgs|kilo|kilos|kilogram|kilograms)$/.test(unit)) {
+    return { amount, unitType: 'weight', normalizedUnit: 'kg', baseValue: amount * 1000, originalUnit: unit };
+  }
+  if (/^(mg|mgs|milligram|milligrams)$/.test(unit)) {
+    return { amount, unitType: 'weight', normalizedUnit: 'mg', baseValue: amount / 1000, originalUnit: unit };
+  }
+
+  // Volume units -> baseValue in milliliters (ml)
+  if (/^(ml|mls|milliliter|milliliters|millilitre|millilitres)$/.test(unit)) {
+    return { amount, unitType: 'volume', normalizedUnit: 'ml', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(l|lt|ltr|ltrs|liter|liters|litre|litres)$/.test(unit)) {
+    return { amount, unitType: 'volume', normalizedUnit: 'l', baseValue: amount * 1000, originalUnit: unit };
+  }
+
+  // Count / Container units
+  if (/^(packet|packets|pkt|pkts|pack|packs)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'pack', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(piece|pieces|pc|pcs)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'pc', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(bottle|bottles|btl|btls)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'bottle', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(can|cans)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'can', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(box|boxes)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'box', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(bunch|bunches)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'bunch', baseValue: amount, originalUnit: unit };
+  }
+  if (/^(dozen|dozens)$/.test(unit)) {
+    return { amount, unitType: 'count', normalizedUnit: 'dozen', baseValue: amount * 12, originalUnit: unit };
+  }
+
+  // Bare number without unit (e.g. "2")
+  if (unit === '') {
+    return { amount, unitType: 'count', normalizedUnit: 'pc', baseValue: amount, originalUnit: '' };
+  }
+
+  // Unknown unit (e.g. "rolls", "slices")
+  return { amount, unitType: 'unknown', normalizedUnit: unit, baseValue: amount, originalUnit: unit };
+}
+
+/**
+ * Accurately merges two quantities handling units of weight (g, kg), volume (ml, L), and counts
+ * Examples:
+ *   "500ml" + "500ml" -> "1 L"
+ *   "250ml" + "500ml" -> "750 ml"
+ *   "1 L" + "500ml"   -> "1.5 L"
+ *   "500g" + "500g"   -> "1 kg"
+ *   "250g" + "500g"   -> "750 g"
+ *   "1 kg" + "500g"   -> "1.5 kg"
+ *   "2 packs" + "1"   -> "3 packs"
+ */
+export function mergeQuantities(
+  qty1: string | null | undefined,
+  qty2: string | null | undefined
+): string {
+  const p1 = parseQuantity(qty1);
+  const p2 = parseQuantity(qty2);
+
+  if (!p1 && !p2) return '2 pcs';
+  if (p1 && !p2) return bumpItemQuantity(qty1);
+  if (!p1 && p2) return qty2?.trim() || '1 pc';
+
+  if (p1 && p2) {
+    // 1. Both are Weight (g, kg, mg)
+    if (p1.unitType === 'weight' && p2.unitType === 'weight') {
+      const totalGrams = p1.baseValue + p2.baseValue;
+      if (totalGrams >= 1000) {
+        const kg = totalGrams / 1000;
+        const formattedKg = Number.isInteger(kg) ? kg.toString() : parseFloat(kg.toFixed(2)).toString();
+        return `${formattedKg} kg`;
+      }
+      return `${parseFloat(totalGrams.toFixed(1))} g`;
+    }
+
+    // 2. Both are Volume (ml, L)
+    if (p1.unitType === 'volume' && p2.unitType === 'volume') {
+      const totalMl = p1.baseValue + p2.baseValue;
+      if (totalMl >= 1000) {
+        const l = totalMl / 1000;
+        const formattedL = Number.isInteger(l) ? l.toString() : parseFloat(l.toFixed(2)).toString();
+        return `${formattedL} L`;
+      }
+      return `${parseFloat(totalMl.toFixed(1))} ml`;
+    }
+
+    // 3. Weight + Unit count (e.g. "500g" and "1", or "500g" and "2")
+    if (p1.unitType === 'weight' && p2.unitType === 'count' && p2.originalUnit === '') {
+      const totalGrams = p1.baseValue + (p2.amount * p1.baseValue);
+      if (totalGrams >= 1000) {
+        const kg = totalGrams / 1000;
+        return `${Number.isInteger(kg) ? kg : parseFloat(kg.toFixed(2))} kg`;
+      }
+      return `${parseFloat(totalGrams.toFixed(1))} g`;
+    }
+    if (p1.unitType === 'count' && p1.originalUnit === '' && p2.unitType === 'weight') {
+      const totalGrams = p2.baseValue + (p1.amount * p2.baseValue);
+      if (totalGrams >= 1000) {
+        const kg = totalGrams / 1000;
+        return `${Number.isInteger(kg) ? kg : parseFloat(kg.toFixed(2))} kg`;
+      }
+      return `${parseFloat(totalGrams.toFixed(1))} g`;
+    }
+
+    // 4. Volume + Unit count (e.g. "500ml" and "1")
+    if (p1.unitType === 'volume' && p2.unitType === 'count' && p2.originalUnit === '') {
+      const totalMl = p1.baseValue + (p2.amount * p1.baseValue);
+      if (totalMl >= 1000) {
+        const l = totalMl / 1000;
+        return `${Number.isInteger(l) ? l : parseFloat(l.toFixed(2))} L`;
+      }
+      return `${parseFloat(totalMl.toFixed(1))} ml`;
+    }
+    if (p1.unitType === 'count' && p1.originalUnit === '' && p2.unitType === 'volume') {
+      const totalMl = p2.baseValue + (p1.amount * p2.baseValue);
+      if (totalMl >= 1000) {
+        const l = totalMl / 1000;
+        return `${Number.isInteger(l) ? l : parseFloat(l.toFixed(2))} L`;
+      }
+      return `${parseFloat(totalMl.toFixed(1))} ml`;
+    }
+
+    // 5. Both are Count (packets, pcs, boxes, etc.)
+    if (p1.unitType === 'count' && p2.unitType === 'count') {
+      const total = p1.amount + p2.amount;
+      const unit = p1.originalUnit || p2.originalUnit || 'pcs';
+      if (/^pack(et)?s?$/i.test(unit)) {
+        return `${total} ${total === 1 ? 'pack' : 'packs'}`;
+      }
+      if (/^p(ie)?ce?s?$/i.test(unit)) {
+        return `${total} pcs`;
+      }
+      if (/^bottle?s?$/i.test(unit)) {
+        return `${total} ${total === 1 ? 'bottle' : 'bottles'}`;
+      }
+      if (/^box(es)?$/i.test(unit)) {
+        return `${total} ${total === 1 ? 'box' : 'boxes'}`;
+      }
+      if (/^dozen(s)?$/i.test(unit)) {
+        return `${total} ${total === 1 ? 'dozen' : 'dozens'}`;
+      }
+      return `${total} ${unit}`;
+    }
+
+    // 6. Matching unknown units
+    if (p1.originalUnit === p2.originalUnit) {
+      const total = p1.amount + p2.amount;
+      return `${total} ${p1.originalUnit}`.trim();
+    }
+  }
+
+  const str1 = qty1?.trim() || '';
+  const str2 = qty2?.trim() || '';
+  return `${str1} + ${str2}`.trim();
+}
+
+/**
+ * Intelligently increments a single quantity (e.g. 500ml -> 1 L, 500g -> 1 kg, 1 kg -> 2 kg, 2 packs -> 3 packs)
  */
 export function bumpItemQuantity(currentQty: string | null | undefined): string {
   if (!currentQty || !currentQty.trim()) {
     return '2 pcs';
   }
 
-  const trimmed = currentQty.trim();
-  const numberMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
-
-  if (numberMatch) {
-    const currentNum = parseFloat(numberMatch[1]);
-    const unit = numberMatch[2];
-    const newNum = currentNum + 1;
-    return unit ? `${newNum} ${unit}` : `${newNum} pcs`;
+  const p = parseQuantity(currentQty);
+  if (!p) {
+    const trimmed = currentQty.trim();
+    const numberMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+    if (numberMatch) {
+      const num = parseFloat(numberMatch[1]) + 1;
+      const u = numberMatch[2];
+      return u ? `${num} ${u}` : `${num} pcs`;
+    }
+    return `${trimmed} (+1)`;
   }
 
-  // If complex like "1 pack + 500ml"
-  return `${trimmed} (+1)`;
+  // Weight (e.g. 500g -> 1 kg, 1 kg -> 2 kg, 250g -> 500 g)
+  if (p.unitType === 'weight') {
+    const totalGrams = p.baseValue * 2;
+    if (totalGrams >= 1000) {
+      const kg = totalGrams / 1000;
+      return `${Number.isInteger(kg) ? kg : parseFloat(kg.toFixed(2))} kg`;
+    }
+    return `${parseFloat(totalGrams.toFixed(1))} g`;
+  }
+
+  // Volume (e.g. 500ml -> 1 L, 1 L -> 2 L, 250ml -> 500 ml)
+  if (p.unitType === 'volume') {
+    const totalMl = p.baseValue * 2;
+    if (totalMl >= 1000) {
+      const l = totalMl / 1000;
+      return `${Number.isInteger(l) ? l : parseFloat(l.toFixed(2))} L`;
+    }
+    return `${parseFloat(totalMl.toFixed(1))} ml`;
+  }
+
+  // Count (e.g. 1 pack -> 2 packs, 2 pcs -> 3 pcs)
+  if (p.unitType === 'count') {
+    const newAmount = p.amount + 1;
+    const unit = p.originalUnit || 'pcs';
+    if (/^pack(et)?s?$/i.test(unit)) {
+      return `${newAmount} ${newAmount === 1 ? 'pack' : 'packs'}`;
+    }
+    if (/^p(ie)?ce?s?$/i.test(unit)) {
+      return `${newAmount} pcs`;
+    }
+    return `${newAmount} ${unit}`;
+  }
+
+  const newNum = p.amount + 1;
+  return `${newNum} ${p.originalUnit}`.trim();
 }
 
 /**

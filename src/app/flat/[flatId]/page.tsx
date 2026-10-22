@@ -18,7 +18,7 @@ import { StartOrderDrawer } from '@/components/ordering/StartOrderDrawer';
 import { OrderChecklistView } from '@/components/ordering/OrderChecklistView';
 import { Button } from '@/components/ui/Button';
 import { GroceryItem } from '@/types/app.types';
-import { findDuplicatePairs, bumpItemQuantity } from '@/lib/itemMatcher';
+import { findDuplicatePairs, mergeQuantities } from '@/lib/itemMatcher';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -84,7 +84,7 @@ export default function DashboardPage() {
     if (pairs.length === 0) return;
 
     for (const pair of pairs) {
-      const newQty = bumpItemQuantity(pair.item1.quantity);
+      const newQty = mergeQuantities(pair.item1.quantity, pair.item2.quantity);
       await Promise.all([
         updateItem(pair.item1.id, { quantity: newQty }),
         deleteItem(pair.item2.id),

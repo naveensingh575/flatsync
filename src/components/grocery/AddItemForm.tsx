@@ -10,7 +10,7 @@ import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { parseGroceryInput, parseBulkGroceryInput } from '@/lib/itemParser';
 import { COMMON_INDIAN_GROCERIES, FREQUENT_STAPLES, GroceryCatalogItem } from '@/lib/groceryCatalog';
-import { findSimilarItem, bumpItemQuantity } from '@/lib/itemMatcher';
+import { findSimilarItem, bumpItemQuantity, mergeQuantities } from '@/lib/itemMatcher';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
@@ -501,16 +501,16 @@ export function AddItemForm({
                 <button
                   type="button"
                   onClick={async () => {
-                    const newQty = bumpItemQuantity(similarItem.quantity);
+                    const newQty = mergeQuantities(similarItem.quantity, form.quantity || '1');
                     if (onUpdateItem) {
                       await onUpdateItem(similarItem.id, { quantity: newQty });
                     }
-                    toast.success(`Bumped quantity of ${similarItem.item_name} to ${newQty}! 📈`);
+                    toast.success(`Updated quantity of ${similarItem.item_name} to ${newQty}! 📈`);
                     onClose();
                   }}
                   className="flex-shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors shadow-xs cursor-pointer"
                 >
-                  + Bump Qty
+                  + Merge Qty
                 </button>
               </div>
             )}
