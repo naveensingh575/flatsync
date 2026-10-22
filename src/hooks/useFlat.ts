@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Flat, Profile } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
@@ -14,6 +14,9 @@ export function useFlat(flatId?: string) {
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const isFetchingGroupsRef = useRef(false);
+  const isFetchingFlatRef = useRef(false);
+
   const [groupMembersMap, setGroupMembersMap] = useState<Record<string, Profile[]>>({});
 
   // Fetch all groups the current user belongs to (multi-source & self-healing)
@@ -26,6 +29,8 @@ export function useFlat(flatId?: string) {
       } catch (_) {}
     }
     if (!currentUserId) return;
+    if (isFetchingGroupsRef.current) return;
+    isFetchingGroupsRef.current = true;
 
     try {
       const candidateGroupIds = new Set<string>();
@@ -55,8 +60,9 @@ export function useFlat(flatId?: string) {
       }
 
       // 4. Preserve any groups already cached in local store
-      if (userGroups && userGroups.length > 0) {
-        userGroups.forEach((g) => {
+      const cachedGroups = useAppStore.getState().userGroups;
+      if (cachedGroups && cachedGroups.length > 0) {
+        cachedGroups.forEach((g) => {
           if (g.id) candidateGroupIds.add(g.id);
         });
       }
@@ -130,7 +136,23 @@ export function useFlat(flatId?: string) {
       });
       const finalGroups = Array.from(uniqueGroupMap.values());
 
-      setUserGroups(finalGroups);
+      if (finalGroups.length > 0) {
+        setUserGroups(finalGroups);
+      } else {
+        // Guard: NEVER wipe out existing groups on a transient empty result or rate limit
+        const existing = useAppStore.getState().userGroups;
+        if (!existing || existing.length === 0) {
+          try {
+            const raw = localStorage.getItem('flatsync-app-storage');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.state?.userGroups?.length > 0) {
+                setUserGroups(parsed.state.userGroups);
+              }
+            }
+          } catch (_) {}
+        }
+      }
 
       // 8. Auto-heal: Ensure all user groups are persisted in group_members
       finalGroups.forEach(async (g) => {
@@ -207,8 +229,10 @@ export function useFlat(flatId?: string) {
       }
     } catch (e) {
       console.error('Error fetching user groups:', e);
+    } finally {
+      isFetchingGroupsRef.current = false;
     }
-  }, [profile, flatId, userGroups, setUserGroups]);
+  }, [profile?.id, profile?.flat_id, flatId, setUserGroups]);
 
   // Check if current user is an admin of the specified group (or active group)
   function isAdmin(targetGroupId?: string): boolean {
@@ -352,6 +376,8 @@ export function useFlat(flatId?: string) {
       setLoading(false);
       return;
     }
+    if (isFetchingFlatRef.current) return;
+    isFetchingFlatRef.current = true;
 
     try {
       // 1. Fetch group details (try groups first, fallback to flats)
@@ -374,7 +400,7 @@ export function useFlat(flatId?: string) {
       ]);
       if (!resolvedFlat && flatId) {
         // Fallback to memory store or localStorage cache
-        const cachedFromStore = userGroups.find((g) => g.id === flatId);
+        const cachedFromStore = useAppStore.getState().userGroups.find((g) => g.id === flatId);
         if (cachedFromStore) {
           resolvedFlat = cachedFromStore;
         } else {
@@ -391,7 +417,9 @@ export function useFlat(flatId?: string) {
           localStorage.setItem(`flatsync_group_${flatId}`, JSON.stringify(resolvedFlat));
         } catch (_) {}
       } else {
-        setFlat(null);
+        // NEVER clear flat to null if we already have it in state or store
+        const cachedFromStore = useAppStore.getState().userGroups.find((g) => g.id === flatId);
+        setFlat((prev) => prev || cachedFromStore || null);
       }
 
       const memberMap = new Map<string, Profile>();
@@ -455,9 +483,10 @@ export function useFlat(flatId?: string) {
     } catch (e) {
       console.error('Error fetching active flat:', e);
     } finally {
+      isFetchingFlatRef.current = false;
       setLoading(false);
     }
-  }, [flatId, profile, setCurrentGroupId]);
+  }, [flatId, profile?.id, profile?.name, setCurrentGroupId]);
 
   useEffect(() => {
     fetchUserGroups();

@@ -1,18 +1,41 @@
 'use client';
 
+import { useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFlat } from '@/hooks/useFlat';
 import { useAppStore } from '@/store/useAppStore';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ArrowLeft, Check, Plus, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Flat } from '@/types/app.types';
 
 export default function GroupsSwitchPage() {
   const router = useRouter();
   const routeParams = useParams();
   const flatId = (routeParams?.flatId as string) || '';
   const { flat } = useFlat(flatId);
-  const { userGroups, setCurrentGroupId } = useAppStore();
+  const { userGroups, setUserGroups, setCurrentGroupId } = useAppStore();
+
+  // Multi-tier fallback for userGroups
+  const displayGroups = useMemo<Flat[]>(() => {
+    if (userGroups && userGroups.length > 0) return userGroups;
+    if (flat) return [flat];
+    try {
+      const stored = localStorage.getItem('flatsync-app-storage');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.state?.userGroups?.length > 0) return parsed.state.userGroups;
+      }
+    } catch (_) {}
+    return [];
+  }, [userGroups, flat]);
+
+  // Self-heal: If displayGroups recovered groups from cache, update Zustand store
+  useEffect(() => {
+    if (userGroups.length === 0 && displayGroups.length > 0) {
+      setUserGroups(displayGroups);
+    }
+  }, [userGroups.length, displayGroups, setUserGroups]);
 
   function handleSelectGroup(groupId: string) {
     setCurrentGroupId(groupId);
@@ -25,8 +48,8 @@ export default function GroupsSwitchPage() {
       <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <button
-            onClick={() => router.push(`/flat/${flatId}`)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
+            onClick={() => router.push(flatId ? `/flat/${flatId}` : '/')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer select-none touch-manipulation active:scale-95"
           >
             <ArrowLeft size={16} />
             <span>Back to List</span>
@@ -40,18 +63,18 @@ export default function GroupsSwitchPage() {
         {/* Simple Group Switch List */}
         <div className="space-y-1">
           <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1 mb-2">
-            Your Groups ({userGroups.length})
+            Your Groups ({displayGroups.length})
           </p>
 
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 divide-y divide-zinc-100 dark:divide-zinc-800 overflow-hidden shadow-sm">
-            {userGroups.map((g) => {
+            {displayGroups.map((g) => {
               const isActive = g.id === flatId;
               return (
                 <button
                   key={g.id}
                   onClick={() => handleSelectGroup(g.id)}
                   className={cn(
-                    'w-full flex items-center justify-between p-4 text-left transition-colors cursor-pointer group',
+                    'w-full flex items-center justify-between p-4 text-left transition-colors cursor-pointer group select-none touch-manipulation active:scale-[0.99]',
                     isActive
                       ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
                       : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'

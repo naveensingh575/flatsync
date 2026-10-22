@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { Flat } from '@/types/app.types';
@@ -12,18 +13,37 @@ interface HeaderProps {
 }
 
 export function Header({ flat, isConnected = true, isOnline = true }: HeaderProps) {
-  const { profile } = useAppStore();
-  const flatId = flat?.id || '';
+  const routeParams = useParams();
+  const routeFlatId = (routeParams?.flatId as string) || '';
+  const { profile, currentGroupId, userGroups } = useAppStore();
 
-  const currentIcon = flat?.icon || '🛒';
-  const displayName = flat?.name || 'My Group';
+  const activeFlatId =
+    flat?.id ||
+    routeFlatId ||
+    currentGroupId ||
+    (userGroups.length > 0 ? userGroups[0].id : '') ||
+    profile?.flat_id ||
+    '';
+
+  const activeGroup =
+    flat ||
+    userGroups.find((g) => g.id === activeFlatId) ||
+    (userGroups.length > 0 ? userGroups[0] : null);
+
+  const currentIcon = activeGroup?.icon || '🛒';
+  const displayName = activeGroup?.name || (userGroups.length > 0 ? userGroups[0].name : 'My Group');
+
+  const groupsHref = activeFlatId ? `/flat/${activeFlatId}/groups` : '/onboarding';
+  const profileHref = activeFlatId
+    ? `/flat/${activeFlatId}/profile`
+    : (profile?.flat_id ? `/flat/${profile.flat_id}/profile` : '/onboarding');
 
   return (
     <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
       <div className="flex items-center justify-between px-3.5 h-14 max-w-lg mx-auto gap-2">
         {/* Top Left: Group Switcher Link */}
         <Link
-          href={`/flat/${flatId}/groups`}
+          href={groupsHref}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
           title="Switch Group"
         >
@@ -32,9 +52,9 @@ export function Header({ flat, isConnected = true, isOnline = true }: HeaderProp
             <span className="font-bold text-sm text-zinc-900 dark:text-white truncate leading-tight">
               {displayName}
             </span>
-            {flat?.join_code && (
+            {activeGroup?.join_code && (
               <span className="text-[10px] text-zinc-400 font-mono">
-                #{flat.join_code}
+                #{activeGroup.join_code}
               </span>
             )}
           </div>
@@ -43,8 +63,8 @@ export function Header({ flat, isConnected = true, isOnline = true }: HeaderProp
 
         {/* Top Right: Profile & Settings Page Link */}
         <Link
-          href={`/flat/${flatId}/profile`}
-          className="relative flex items-center justify-center p-1 rounded-full cursor-pointer hover:ring-2 hover:ring-emerald-500/20 transition-all"
+          href={profileHref}
+          className="relative flex items-center justify-center p-1 rounded-full cursor-pointer hover:ring-2 hover:ring-emerald-500/20 transition-all select-none touch-manipulation active:scale-95"
           title="Profile & Settings"
         >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
