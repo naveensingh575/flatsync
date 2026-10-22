@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// SpeechRecognition type declarations for browser support
+// SpeechRecognition type declarations for cross-browser support
 interface SpeechRecognitionErrorEvent extends Event {
   error: string;
   message?: string;
@@ -60,89 +60,167 @@ export function useVoiceInput(onResult?: (text: string) => void) {
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const onResultRef = useRef(onResult);
+  const isListeningRef = useRef(false);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Keep latest onResult callback in a ref to avoid recreating recognition on every re-render
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
+
+  // Check support on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setIsSupported(true);
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = 'en-IN'; // Indian English handles bilingual names (e.g. Amul, paneer, dahi) best
-
-        recognition.onstart = () => {
-          setIsListening(true);
-          setError(null);
-        };
-
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
-          let current = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            current += event.results[i][0].transcript;
-          }
-          setTranscript(current);
-          if (onResult && current.trim()) {
-            onResult(current.trim());
-          }
-        };
-
-        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-          setIsListening(false);
-          if (event.error === 'not-allowed') {
-            setError('Microphone permission denied. Please allow microphone access in your browser.');
-          } else if (event.error !== 'no-speech') {
-            setError(`Speech recognition error: ${event.error}`);
-          }
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
-      } else {
-        setIsSupported(false);
-      }
+      setIsSupported(Boolean(SpeechRecognition));
     }
 
     return () => {
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
       if (recognitionRef.current) {
         try {
+          recognitionRef.current.onstart = null;
+          recognitionRef.current.onresult = null;
+          recognitionRef.current.onerror = null;
+          recognitionRef.current.onend = null;
           recognitionRef.current.abort();
         } catch {
-          // ignore cleanup abort error
+          // ignore
         }
       }
     };
-  }, [onResult]);
+  }, []);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current) return;
     setError(null);
     setTranscript('');
-    try {
-      recognitionRef.current.start();
-    } catch {
-      // If already started, abort and restart
+
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+
+    const SpeechRecognition =
+      typeof window !== 'undefined'
+        ? window.SpeechRecognition || window.webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecognition) {
+      setError('Voice recognition is not supported in this browser.');
+      return;
+    }
+
+    // Stop any existing instance
+    if (recognitionRef.current) {
       try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
         recognitionRef.current.abort();
-        recognitionRef.current.start();
-      } catch (err) {
-        console.error('Failed to start speech recognition:', err);
+      } catch {
+        // ignore
+      }
+      recognitionRef.current = null;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      // continuous=true allows natural pauses without mobile browser cutting off prematurely
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN'; // Indian English handles bilingual names (Amul, paneer, dahi, atta) best
+
+      recognition.onstart = () => {
+        isListeningRef.current = true;
+        setIsListening(true);
+        setError(null);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let fullTranscript = '';
+        for (let i = 0; i < event.results.length; ++i) {
+          const item = event.results[i];
+          if (item[0]?.transcript) {
+            fullTranscript += (fullTranscript ? ' ' : '') + item[0].transcript.trim();
+          }
+        }
+
+        const trimmed = fullTranscript.trim();
+        if (trimmed) {
+          setTranscript(trimmed);
+          onResultRef.current?.(trimmed);
+        }
+
+        // Extend or restart silence timer: auto-stop after 3 seconds of silence once speech has been heard
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+        silenceTimerRef.current = setTimeout(() => {
+          if (isListeningRef.current && recognitionRef.current) {
+            try {
+              recognitionRef.current.stop();
+            } catch {
+              // ignore
+            }
+          }
+        }, 3000);
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        // 'aborted' and 'no-speech' are normal lifecycle events on mobile, not user errors
+        if (event.error === 'aborted' || event.error === 'no-speech') {
+          return;
+        }
+
+        isListeningRef.current = false;
+        setIsListening(false);
+
+        if (event.error === 'not-allowed') {
+          setError('Microphone permission denied. Please allow microphone access in your browser settings.');
+        } else if (event.error === 'network') {
+          setError('Voice recognition network service unavailable. Check your internet connection.');
+        } else {
+          setError(`Speech recognition: ${event.error}`);
+        }
+      };
+
+      recognition.onend = () => {
+        isListeningRef.current = false;
+        setIsListening(false);
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.warn('Speech recognition start failed:', err);
+      isListeningRef.current = false;
+      setIsListening(false);
+      if (err?.name === 'NotAllowedError') {
+        setError('Microphone permission denied. Please allow microphone access.');
       }
     }
   }, []);
 
   const stopListening = useCallback(() => {
-    if (!recognitionRef.current) return;
-    try {
-      recognitionRef.current.stop();
-    } catch {
-      // ignore
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
     }
+    isListeningRef.current = false;
     setIsListening(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
   }, []);
 
   const resetTranscript = useCallback(() => {
