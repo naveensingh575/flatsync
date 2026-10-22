@@ -157,11 +157,16 @@ export function useAuth() {
     const trimmedName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
 
+    // Determine production callback URL dynamically
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const emailRedirectTo = `${siteUrl}/auth/callback?next=/login`;
+
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
       options: {
         data: { name: trimmedName },
+        emailRedirectTo,
       },
     });
     if (error) throw error;
@@ -175,6 +180,7 @@ export function useAuth() {
       const newProfile: Profile = {
         id: data.user.id,
         name: trimmedName,
+        email: cleanEmail,
         avatar_url: null,
         flat_id: null,
         joined_at: new Date().toISOString(),
@@ -183,18 +189,17 @@ export function useAuth() {
       await supabase.from('profiles').upsert(newProfile);
     }
 
-    // Ensure session is cleanly signed out so user signs in with credentials
+    // Ensure session is cleanly signed out so user verifies email and enters credentials manually
     await supabase.auth.signOut();
     setProfile(null);
 
-    // Preserve pending code if provided
-    let codeParam = pendingCode;
-    if (!codeParam && typeof window !== 'undefined') {
-      codeParam = localStorage.getItem('flatsync_pending_code') || undefined;
+    // Save pending code in localStorage if provided so once they verify email and log in, they join their group
+    if (pendingCode && typeof window !== 'undefined') {
+      localStorage.setItem('flatsync_pending_code', pendingCode.trim().toUpperCase());
     }
 
-    const codeQuery = codeParam ? `&code=${encodeURIComponent(codeParam.trim().toUpperCase())}` : '';
-    router.push(`/login?email=${encodeURIComponent(email)}&registered=true${codeQuery}`);
+    // Redirect to clean signin page with no auto-filled email or password
+    router.push('/login?checkEmail=true');
   }
 
   async function signOut() {

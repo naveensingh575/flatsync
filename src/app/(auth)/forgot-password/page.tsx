@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { ArrowLeft, KeyRound, Mail, CheckCircle2, ShieldCheck, Lock } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function ForgotPasswordContent() {
@@ -15,24 +15,58 @@ function ForgotPasswordContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  // Step 1: 'request' (enter email) -> Step 2: 'verify_and_reset' (enter OTP, new password, confirm password)
-  const [step, setStep] = useState<'request' | 'verify_and_reset'>('request');
+  // Mode:
+  // 'request': User enters email to receive password reset link
+  // 'email_sent': Confirmation that verification reset mail was sent
+  // 'reset': User opened the email link and is setting their new & confirmed password
+  const [mode, setMode] = useState<'request' | 'email_sent' | 'reset'>('request');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [userNotFound, setUserNotFound] = useState(false);
 
   useEffect(() => {
+    // 1. Detect if user arrived via the email reset link
+    const modeParam = searchParams.get('mode');
+    const typeParam = searchParams.get('type');
+    const codeParam = searchParams.get('code');
+
+    // Supabase can deliver hash fragments or session callback for recovery
+    if (modeParam === 'reset' || typeParam === 'recovery' || codeParam) {
+      setMode('reset');
+    }
+
+    // 2. Read email param if passed
     const emailParam = searchParams.get('email');
     if (emailParam) {
       setEmail(emailParam.trim().toLowerCase());
     }
-  }, [searchParams]);
 
-  // Timer countdown for resending OTP
+    // Check if an existing recovery session is active
+    async function checkRecoverySession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && (modeParam === 'reset' || window.location.hash.includes('type=recovery'))) {
+        setMode('reset');
+      }
+    }
+    checkRecoverySession();
+
+    // Listen for PASSWORD_RECOVERY auth event
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('reset');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [searchParams, supabase]);
+
+  // Timer countdown for resending
   useEffect(() => {
     if (countdown <= 0) return;
     const timer = setInterval(() => {
@@ -41,8 +75,8 @@ function ForgotPasswordContent() {
     return () => clearInterval(timer);
   }, [countdown]);
 
-  // Request Password Reset OTP via Email
-  async function handleSendOtp(e?: React.FormEvent) {
+  // Request Password Reset Link via Email
+  async function handleSendResetEmail(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
@@ -51,46 +85,69 @@ function ForgotPasswordContent() {
     }
 
     setLoading(true);
+    setUserNotFound(false);
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail);
+      // 1. Check if an account is attached to this email
+      const checkRes = await fetch('/api/auth/check-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+      const checkData = await checkRes.json();
+
+      if (checkData && checkData.exists === false) {
+        setUserNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Determine exact project URL (never localhost in production)
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+      const redirectTo = `${siteUrl}/auth/callback?type=recovery&next=/forgot-password?mode=reset`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo,
+      });
+
       if (error) throw error;
 
-      toast.success('Verification code / link sent to your email! 📬');
-      setStep('verify_and_reset');
+      toast.success('Password reset email sent! Check your inbox 📬', { duration: 6000 });
+      setMode('email_sent');
       setCountdown(60);
     } catch (err: any) {
-      console.error('Password reset request error:', err);
-      toast.error(err.message || 'Failed to send verification code. Please check your email.');
+      console.error('Password reset email error:', err);
+      toast.error(err.message || 'Failed to send reset email. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  // Resend OTP
-  async function handleResendOtp() {
+  // Resend reset email
+  async function handleResendEmail() {
     if (countdown > 0) return;
     setResending(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+      const redirectTo = `${siteUrl}/auth/callback?type=recovery&next=/forgot-password?mode=reset`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo,
+      });
       if (error) throw error;
-      toast.success('New code sent to your email! 📬');
+      toast.success('New password reset email sent! 📬');
       setCountdown(60);
     } catch (err: any) {
-      toast.error(err.message || 'Could not resend code. Please try again.');
+      toast.error(err.message || 'Could not resend email. Please try again.');
     } finally {
       setResending(false);
     }
   }
 
-  // Verify OTP and Update Password
-  async function handleVerifyAndResetPassword(e: React.FormEvent) {
+  // Submit New & Confirmed Password
+  async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
-    const cleanOtp = otp.trim();
 
-    if (!cleanOtp) {
-      toast.error('Please enter the 6-digit OTP code sent to your email');
-      return;
-    }
     if (newPassword.length < 6) {
       toast.error('New password must be at least 6 characters long');
       return;
@@ -102,40 +159,23 @@ function ForgotPasswordContent() {
 
     setLoading(true);
     try {
-      // 1. Verify the recovery OTP with Supabase
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
-        token: cleanOtp,
-        type: 'recovery',
-      });
-
-      if (verifyError) {
-        // Fallback: check 'email' type as fallback in case token was generated as email signup token
-        const fallbackVerify = await supabase.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: cleanOtp,
-          type: 'email',
-        });
-        if (fallbackVerify.error) {
-          throw new Error(verifyError.message || 'Invalid or expired OTP code. Please check your email.');
-        }
-      }
-
-      // 2. Set the new password for the authenticated session
-      const { error: updateError } = await supabase.auth.updateUser({
+      // 1. Update password in Supabase Auth
+      const { error } = await supabase.auth.updateUser({
         password: newPassword,
       });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      // 3. Clean sign out so user logs in with new credentials
+      // 2. Immediately sign out session so user signs in cleanly with credentials
       await supabase.auth.signOut();
 
-      toast.success('Password successfully reset! Please sign in with your new password 🔐');
-      router.push(`/login?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      toast.success('Password reset successfully! Please sign in with your new password 🔐', { duration: 5000 });
+
+      // Redirect to signin page without auto-fill email or password
+      router.push('/login');
     } catch (err: any) {
       console.error('Password change error:', err);
-      toast.error(err.message || 'Failed to change password. Please verify your OTP.');
+      toast.error(err.message || 'Failed to update password. Your reset link may have expired.');
     } finally {
       setLoading(false);
     }
@@ -149,29 +189,55 @@ function ForgotPasswordContent() {
           <KeyRound size={28} />
         </div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          {step === 'request' ? 'Forgot Password' : 'Reset Password'}
+          {mode === 'reset' ? 'Set New Password' : 'Forgot Password'}
         </h1>
         <p className="text-zinc-500 dark:text-zinc-400 text-xs max-w-xs mx-auto">
-          {step === 'request'
-            ? 'Enter your registered email and we will send you an OTP to reset your password.'
-            : `Enter the code sent to ${email} and choose your new password.`}
+          {mode === 'reset'
+            ? 'Choose a strong new password and confirm it below.'
+            : mode === 'email_sent'
+            ? `We sent a reset verification link to ${email}. Tap the link in your email to set a new password.`
+            : 'Enter your registered email address to receive a secure password reset link.'}
         </p>
       </div>
 
-      {step === 'request' ? (
-        <form onSubmit={handleSendOtp} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl space-y-4 border border-zinc-100 dark:border-zinc-800">
+      {userNotFound && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs space-y-2 animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold">
+            <AlertCircle size={16} className="text-rose-500 flex-shrink-0" />
+            <span>User doesn&apos;t exist</span>
+          </div>
+          <p className="leading-relaxed">
+            No account is attached to this email address. Please check for typos or create a new account.
+          </p>
+          <div className="pt-1">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400 hover:underline"
+            >
+              <span>Create Account →</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Mode 1: Request Email Form */}
+      {mode === 'request' && (
+        <form onSubmit={handleSendResetEmail} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl space-y-4 border border-zinc-100 dark:border-zinc-800">
           <Input
             label="Email Address"
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (userNotFound) setUserNotFound(false);
+            }}
             required
             autoFocus
           />
 
           <Button type="submit" className="w-full" size="lg" loading={loading}>
-            Send Reset Code
+            Send Reset Link
           </Button>
 
           <div className="pt-1 text-center">
@@ -184,40 +250,60 @@ function ForgotPasswordContent() {
             </Link>
           </div>
         </form>
-      ) : (
-        <form onSubmit={handleVerifyAndResetPassword} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl space-y-4 border border-zinc-100 dark:border-zinc-800">
-          <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center justify-between">
-            <div className="flex items-center gap-2 truncate">
-              <Mail size={16} className="text-emerald-500 flex-shrink-0" />
-              <span className="truncate">{email}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setStep('request')}
-              className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex-shrink-0 cursor-pointer"
-            >
-              Change
-            </button>
+      )}
+
+      {/* Mode 2: Email Sent Confirmation View */}
+      {mode === 'email_sent' && (
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl space-y-5 border border-zinc-100 dark:border-zinc-800 text-center">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <Mail size={24} />
           </div>
 
-          <Input
-            label="Verification Code (OTP)"
-            type="text"
-            placeholder="Enter 6-digit code from email"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            required
-            autoFocus
-            maxLength={10}
-          />
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Check your email</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              We sent a password reset link to <strong className="text-zinc-800 dark:text-zinc-200">{email}</strong>.
+              Click the link in the email to open the password reset page.
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              disabled={countdown > 0 || resending}
+              onClick={handleResendEmail}
+              className="w-full py-2.5 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {countdown > 0 ? `Resend email in ${countdown}s` : 'Resend Email'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode('request')}
+              className="text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              Use a different email
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mode 3: Reset Password (opened from email link) */}
+      {mode === 'reset' && (
+        <form onSubmit={handleUpdatePassword} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl space-y-4 border border-zinc-100 dark:border-zinc-800">
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+            <span>Email verified! Enter your new password below.</span>
+          </div>
 
           <Input
             label="New Password"
             type="password"
-            placeholder="At least 6 characters"
+            placeholder="Min. 6 characters"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             required
+            autoFocus
           />
 
           <Input
@@ -230,26 +316,17 @@ function ForgotPasswordContent() {
           />
 
           <Button type="submit" className="w-full" size="lg" loading={loading}>
-            Verify &amp; Change Password
+            Save New Password
           </Button>
 
-          <div className="flex items-center justify-between text-xs pt-1">
-            <button
-              type="button"
-              onClick={() => setStep('request')}
-              className="text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+          <div className="pt-1 text-center">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
             >
-              ← Back
-            </button>
-
-            <button
-              type="button"
-              disabled={countdown > 0 || resending}
-              onClick={handleResendOtp}
-              className="font-semibold text-emerald-600 dark:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
-            >
-              {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend Code'}
-            </button>
+              <ArrowLeft size={14} />
+              <span>Cancel and Sign In</span>
+            </Link>
           </div>
         </form>
       )}

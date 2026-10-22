@@ -39,6 +39,7 @@ export interface Profile {
   avatar_url: string | null;
   flat_id: string | null;
   joined_at: string;
+  email?: string | null;
 }
 
 export interface GroceryItem {

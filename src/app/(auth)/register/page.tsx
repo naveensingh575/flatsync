@@ -40,7 +40,7 @@ function RegisterContent() {
     setLoading(true);
     try {
       await signUp(email, password, name.trim(), code || undefined);
-      toast.success('Account created! Please sign in with your credentials 🔐');
+      toast.success('Verification email sent! Please check your inbox and verify to sign in 📬', { duration: 6000 });
     } catch (err: any) {
       toast.error(err.message ?? 'Sign up failed');
     } finally {

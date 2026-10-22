@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Sparkles, CheckCircle2 } from 'lucide-react';
+import { Sparkles, CheckCircle2, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function LoginContent() {
@@ -17,17 +17,22 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
-  const [justRegistered, setJustRegistered] = useState(false);
+  const [checkEmail, setCheckEmail] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
-    const emailParam = searchParams.get('email');
-    if (emailParam) {
-      setEmail(emailParam);
+    // We intentionally do NOT auto-fill email or password as requested:
+    // "verification mail link for create account should redirect to signin page nothing auto filled"
+    // "after successful reset it should redirect to signin page without auto fill mail or password."
+    setEmail('');
+    setPassword('');
+
+    if (searchParams.get('checkEmail') === 'true') {
+      setCheckEmail(true);
     }
 
-    const regParam = searchParams.get('registered');
-    if (regParam === 'true') {
-      setJustRegistered(true);
+    if (searchParams.get('verified') === 'true') {
+      setEmailVerified(true);
     }
 
     const codeParam = searchParams.get('code');
@@ -66,14 +71,21 @@ function LoginContent() {
         </p>
       </div>
 
-      {justRegistered && (
-        <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
-          <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
-          <span>Account created! Enter your password to sign in.</span>
+      {checkEmail && (
+        <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 text-xs font-medium animate-in fade-in">
+          <Mail size={16} className="text-sky-500 flex-shrink-0" />
+          <span>Verification email sent! Please verify your email before signing in.</span>
         </div>
       )}
 
-      {code && !justRegistered && (
+      {emailVerified && (
+        <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
+          <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+          <span>Email successfully verified! Enter your credentials to sign in.</span>
+        </div>
+      )}
+
+      {code && (
         <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-medium animate-in fade-in">
           <Sparkles size={16} className="text-amber-500 flex-shrink-0" />
           <span>Sign in to join group #{code}!</span>

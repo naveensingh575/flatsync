@@ -147,3 +147,32 @@ DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE ordering_sessions;
 EXCEPTION WHEN duplicate_object THEN null;
 END $$;
+
+-- 12. Email verification & existence check for forgot password
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles (LOWER(email));
+
+-- Backfill profile emails from auth.users (if run as Supabase admin/postgres)
+DO $$ BEGIN
+  UPDATE public.profiles p
+  SET email = u.email
+  FROM auth.users u
+  WHERE p.id = u.id AND (p.email IS NULL OR p.email = '');
+EXCEPTION WHEN OTHERS THEN null;
+END $$;
+
+-- RPC function: check_user_exists
+CREATE OR REPLACE FUNCTION public.check_user_exists(check_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM auth.users WHERE LOWER(email) = LOWER(TRIM(check_email))
+  );
+END;
+$$;
+
+-- Grant execution permissions to anon and authenticated
+GRANT EXECUTE ON FUNCTION public.check_user_exists(TEXT) TO anon, authenticated;
