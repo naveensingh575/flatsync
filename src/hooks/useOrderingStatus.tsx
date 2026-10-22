@@ -89,7 +89,7 @@ export function useOrderingStatus(flatId: string) {
           const platformName = s.platform ? s.platform.toUpperCase() : 'QUICK-COMMERCE';
 
           playNotificationChime();
-          sendOrderingAlertNotification(buyerName, platformName);
+          sendOrderingAlertNotification(buyerName, platformName, flatId, s.buyer_id);
 
           toast.custom(
             (t) => (
@@ -203,6 +203,8 @@ export function useOrderingStatus(flatId: string) {
       platform,
       is_active: true,
     });
+
+    sendOrderingAlertNotification(profile.name || 'Someone', platform, flatId, profile.id);
   }
 
   async function endOrdering(totalAmount?: number) {

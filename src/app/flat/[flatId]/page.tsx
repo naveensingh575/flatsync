@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, ShoppingCart, Search, X, Zap } from 'lucide-react';
 import { useFlat } from '@/hooks/useFlat';
 import { useGroceryList } from '@/hooks/useGroceryList';
@@ -19,6 +19,12 @@ import { OrderChecklistView } from '@/components/ordering/OrderChecklistView';
 import { Button } from '@/components/ui/Button';
 import { GroceryItem } from '@/types/app.types';
 import { findDuplicatePairs, mergeQuantities } from '@/lib/itemMatcher';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  subscribeUserToPush,
+} from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -34,6 +40,20 @@ export default function DashboardPage() {
   // Search and urgent filters
   const [searchQuery, setSearchQuery] = useState('');
   const [urgentOnly, setUrgentOnly] = useState(false);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!isNotificationSupported()) return;
+    const perm = getNotificationPermission();
+    if (perm === 'granted' && flatId) {
+      subscribeUserToPush(profile?.id, flatId);
+    } else if (perm === 'default') {
+      const dismissed = typeof window !== 'undefined' && localStorage.getItem('dismissed_notif_prompt') === 'true';
+      if (!dismissed) {
+        setShowNotifPrompt(true);
+      }
+    }
+  }, [flatId, profile?.id]);
 
   const { flat } = useFlat(flatId);
   const { items, loading, isConnected, isOnline, addItem, addBatchItems, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
@@ -112,6 +132,48 @@ export default function DashboardPage() {
           onViewChecklist={() => setIsChecklistOpen(true)}
           onQuickAdd={() => setIsAddItemOpen(true)}
         />
+
+        {/* Lockscreen / Background Notification Activation Banner */}
+        {showNotifPrompt && (
+          <div className="mx-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-xl flex-shrink-0 animate-bounce">🔔</span>
+              <div className="min-w-0">
+                <p className="font-bold text-zinc-900 dark:text-white truncate">
+                  Get Home Screen & Lockscreen Alerts
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
+                  Popups when flatmates order or add items even if FlatSync is closed.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={async () => {
+                  const granted = await requestNotificationPermission();
+                  if (granted) {
+                    await subscribeUserToPush(profile?.id, flatId);
+                    toast.success('Home screen alerts enabled! 🔔');
+                  }
+                  setShowNotifPrompt(false);
+                }}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-transform active:scale-95 cursor-pointer"
+              >
+                Enable
+              </button>
+              <button
+                onClick={() => {
+                  setShowNotifPrompt(false);
+                  localStorage.setItem('dismissed_notif_prompt', 'true');
+                }}
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Duplicate Items Alert & Merge Banner */}
         {duplicatePairs.length > 0 && (

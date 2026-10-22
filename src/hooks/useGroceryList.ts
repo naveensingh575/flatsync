@@ -6,6 +6,7 @@ import { GroceryItem, ItemStatus, AddItemPayload } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
 import { enqueueOfflineAction, flushOfflineQueue, getOfflineQueue } from '@/lib/offlineQueue';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
+import { sendItemAddedNotification } from '@/lib/notifications';
 import toast from 'react-hot-toast';
 
 export function useGroceryList(flatId: string) {
@@ -93,8 +94,21 @@ export function useGroceryList(flatId: string) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'items', filter: `flat_id=eq.${flatId}` },
-        () => {
+        (payload: any) => {
           fetchItems();
+          if (payload?.eventType === 'INSERT') {
+            const newItem = payload.new;
+            if (newItem && newItem.requested_by_id !== profile?.id) {
+              const requester = newItem.for_user || 'Someone';
+              sendItemAddedNotification(
+                requester,
+                newItem.item_name,
+                newItem.quantity,
+                flatId,
+                newItem.requested_by_id
+              );
+            }
+          }
         }
       )
       .subscribe((status: any) => {
@@ -229,6 +243,13 @@ export function useGroceryList(flatId: string) {
           setItems((prev) =>
             prev.map((i) => (i.id === tempId ? (fallbackRes.data as GroceryItem) : i))
           );
+          sendItemAddedNotification(
+            currentProfile.name || 'Someone',
+            payload.item_name,
+            payload.quantity,
+            flatId,
+            currentProfile.id
+          );
         } else if (fallbackRes.error) {
           console.error('Fallback insert failed:', fallbackRes.error);
           // If RLS blocked insert, guide user or keep optimistic
@@ -242,6 +263,13 @@ export function useGroceryList(flatId: string) {
         // Replace temporary item with confirmed row from database
         setItems((prev) =>
           prev.map((i) => (i.id === tempId ? (data as GroceryItem) : i))
+        );
+        sendItemAddedNotification(
+          currentProfile.name || 'Someone',
+          payload.item_name,
+          payload.quantity,
+          flatId,
+          currentProfile.id
         );
       }
     } catch (err: any) {

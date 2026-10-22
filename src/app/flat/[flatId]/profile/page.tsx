@@ -33,6 +33,7 @@ import {
   requestNotificationPermission,
   areAlertsEnabled,
   setAlertsEnabled,
+  subscribeUserToPush,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
@@ -127,6 +128,9 @@ export default function ProfilePage() {
     const nextState = !alertsEnabled;
     setAlertsEnabledState(nextState);
     setAlertsEnabled(nextState);
+    if (nextState && flatId) {
+      await subscribeUserToPush(profile?.id, flatId);
+    }
     toast.success(nextState ? 'Lockscreen alerts enabled! 🔔' : 'Ordering alerts muted');
   }
 

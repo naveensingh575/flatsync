@@ -35,6 +35,7 @@ import {
   requestNotificationPermission,
   areAlertsEnabled,
   setAlertsEnabled,
+  subscribeUserToPush,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
@@ -147,12 +148,18 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
       if (getNotificationPermission() === 'granted') {
         setAlertsEnabled(true);
         setAlertsEnabledState(true);
+        if (flatId) {
+          subscribeUserToPush(profile?.id, flatId);
+        }
         toast.success('Ordering alerts enabled! 🔔');
       } else {
         const granted = await requestNotificationPermission();
         if (granted) {
           setAlertsEnabled(true);
           setAlertsEnabledState(true);
+          if (flatId) {
+            subscribeUserToPush(profile?.id, flatId);
+          }
           toast.success('Ordering alerts enabled! 🔔');
         } else {
           setAlertsEnabled(false);
