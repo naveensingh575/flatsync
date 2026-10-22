@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Trash2, ShoppingCart, CheckCircle2, AlertCircle, User, Pencil, X } from 'lucide-react';
 import { GroceryItem, ItemStatus, AddItemPayload } from '@/types/app.types';
@@ -40,29 +41,70 @@ export function GroceryItemCard({
   const storeTagMatch = item.note?.match(/\[(Blinkit|Zepto|Instamart|Apollo|Pharmacy|Local Mandi|Mandi|Licious|Meat)[^\]]*\]/i);
   const storeTagName = storeTagMatch ? storeTagMatch[0].replace(/[\[\]]/g, '') : null;
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardWidth, setCardWidth] = useState(360);
+  const [swipeStage, setSwipeStage] = useState<'none' | 'right_pending' | 'right_ready' | 'left_pending' | 'left_ready'>('none');
+
+  useEffect(() => {
+    if (cardRef.current) {
+      const w = cardRef.current.clientWidth;
+      if (w > 0) setCardWidth(w);
+    }
+  }, []);
+
+  // 75% slide threshold requirement
+  const threshold = Math.max(220, Math.round(cardWidth * 0.75));
+
   const x = useMotionValue(0);
 
   // Background opacity transitions based on drag direction
-  const rightRevealOpacity = useTransform(x, [10, 50], [0, 1]);
-  const leftRevealOpacity = useTransform(x, [-10, -50], [0, 1]);
+  const rightRevealOpacity = useTransform(x, [15, 60], [0, 1]);
+  const leftRevealOpacity = useTransform(x, [-15, -60], [0, 1]);
+
+  useEffect(() => {
+    return x.on('change', (latest) => {
+      if (latest >= threshold) {
+        setSwipeStage((prev) => {
+          if (prev !== 'right_ready') {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
+            return 'right_ready';
+          }
+          return prev;
+        });
+      } else if (latest > 15) {
+        setSwipeStage('right_pending');
+      } else if (latest <= -threshold) {
+        setSwipeStage((prev) => {
+          if (prev !== 'left_ready') {
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(25);
+            return 'left_ready';
+          }
+          return prev;
+        });
+      } else if (latest < -15) {
+        setSwipeStage('left_pending');
+      } else {
+        setSwipeStage('none');
+      }
+    });
+  }, [x, threshold]);
 
   function handleDragEnd(_: any, info: any) {
-    const isSwipeRight = info.offset.x > 60 || info.velocity.x > 300;
-    const isSwipeLeft = info.offset.x < -60 || info.velocity.x < -300;
+    setSwipeStage('none');
 
-    if (isSwipeRight) {
-      // Swiped right -> toggle In Cart
+    // ONLY commit if user has intentionally dragged at least 75% of the card width
+    if (info.offset.x >= threshold) {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(20);
+        navigator.vibrate(30);
       }
       onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
-    } else if (isSwipeLeft) {
-      // Swiped left -> Delete item
+    } else if (info.offset.x <= -threshold) {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(25);
+        navigator.vibrate(35);
       }
       onDelete(item.id);
     }
+    // Otherwise, Framer Motion automatically springs the card safely back to center (x: 0)
   }
 
   function handleTap() {
@@ -73,43 +115,80 @@ export function GroceryItemCard({
 
   return (
     <div className="relative rounded-2xl overflow-hidden select-none">
-      {/* Background action reveal layers */}
+      {/* Background action reveal layers with visual progress and 75% threshold badge */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
         {/* Swipe Right Reveal: In Cart */}
         <motion.div
           style={{ opacity: rightRevealOpacity }}
-          className="absolute inset-0 bg-emerald-500 text-white flex items-center justify-start pl-5 gap-2.5"
+          className={cn(
+            'absolute inset-0 text-white flex items-center justify-start pl-5 pr-4 transition-colors duration-200',
+            swipeStage === 'right_ready' ? 'bg-emerald-600' : 'bg-emerald-500/90'
+          )}
         >
-          <CheckCircle2 size={22} className="text-white" />
-          <span className="text-xs font-bold tracking-wide">
-            {item.status === 'in_cart' ? 'Mark Pending' : 'In Cart'}
-          </span>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2
+              size={swipeStage === 'right_ready' ? 24 : 20}
+              className={cn(
+                'text-white transition-transform duration-150',
+                swipeStage === 'right_ready' && 'scale-125'
+              )}
+            />
+            {swipeStage === 'right_ready' ? (
+              <span className="text-xs font-black tracking-wide uppercase px-2.5 py-1 rounded-lg bg-white/25 backdrop-blur-xs shadow-sm animate-pulse">
+                Release for Cart ✓
+              </span>
+            ) : (
+              <span className="text-xs font-bold tracking-wide opacity-90">
+                Slide 75% to Cart →
+              </span>
+            )}
+          </div>
         </motion.div>
 
         {/* Swipe Left Reveal: Delete */}
         <motion.div
           style={{ opacity: leftRevealOpacity }}
-          className="absolute inset-0 bg-rose-500 text-white flex items-center justify-end pr-5 gap-2.5"
+          className={cn(
+            'absolute inset-0 text-white flex items-center justify-end pr-5 pl-4 transition-colors duration-200',
+            swipeStage === 'left_ready' ? 'bg-rose-600' : 'bg-rose-500/90'
+          )}
         >
-          <span className="text-xs font-bold tracking-wide">Delete</span>
-          <Trash2 size={22} className="text-white" />
+          <div className="flex items-center gap-2.5">
+            {swipeStage === 'left_ready' ? (
+              <span className="text-xs font-black tracking-wide uppercase px-2.5 py-1 rounded-lg bg-white/25 backdrop-blur-xs shadow-sm animate-pulse">
+                Release to Delete 🗑️
+              </span>
+            ) : (
+              <span className="text-xs font-bold tracking-wide opacity-90">
+                ← Slide 75% to Delete
+              </span>
+            )}
+            <Trash2
+              size={swipeStage === 'left_ready' ? 24 : 20}
+              className={cn(
+                'text-white transition-transform duration-150',
+                swipeStage === 'left_ready' && 'scale-125'
+              )}
+            />
+          </div>
         </motion.div>
       </div>
 
-      {/* Front draggable item card */}
+      {/* Front draggable item card with 1:1 finger tracking & auto-snap */}
       <motion.div
+        ref={cardRef}
         layout
         drag="x"
         dragDirectionLock
         dragSnapToOrigin
         dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.8}
+        dragElastic={1}
         onDragEnd={handleDragEnd}
         style={{ x, touchAction: 'pan-y' }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, x: -300, scale: 0.9 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
+        exit={{ opacity: 0, x: -cardWidth, scale: 0.9 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className={cn(
           'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-colors duration-150 shadow-xs hover:shadow-sm',
           item.status === 'in_cart'
