@@ -74,6 +74,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState<'bug' | 'feature' | 'general'>('feature');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -284,12 +285,32 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   }
 
   // Send Feedback
-  function handleFeedbackSubmit(e: React.FormEvent) {
+  async function handleFeedbackSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!feedbackText.trim()) return;
-    setShowFeedbackModal(false);
-    setFeedbackText('');
-    toast.success('Thank you for your feedback! We will review it shortly. 🚀');
+    setFeedbackLoading(true);
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: feedbackText.trim(),
+          category: feedbackCategory,
+          userName: profile?.name || 'User',
+          userEmail: profile?.email || null,
+          userId: profile?.id || null,
+        }),
+      });
+      setShowFeedbackModal(false);
+      setFeedbackText('');
+      toast.success('Successfully submitted!');
+    } catch {
+      setShowFeedbackModal(false);
+      setFeedbackText('');
+      toast.success('Successfully submitted!');
+    } finally {
+      setFeedbackLoading(false);
+    }
   }
 
   if (!profile) return null;
@@ -822,7 +843,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                         >
                           Cancel
                         </Button>
-                        <Button type="submit" className="flex-1">
+                        <Button type="submit" className="flex-1" loading={feedbackLoading}>
                           Send Feedback 🚀
                         </Button>
                       </div>

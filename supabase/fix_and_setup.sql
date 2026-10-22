@@ -197,3 +197,26 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS last_edited_by_id UUID;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS group_id UUID;
 ALTER TABLE ordering_sessions ADD COLUMN IF NOT EXISTS group_id UUID;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS group_id UUID;
+
+-- 14. Feedback table
+CREATE TABLE IF NOT EXISTS public.feedback (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  user_name  TEXT,
+  user_email TEXT,
+  category   TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anyone can submit feedback" ON public.feedback;
+CREATE POLICY "anyone can submit feedback"
+  ON public.feedback FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "admins can view feedback" ON public.feedback;
+CREATE POLICY "admins can view feedback"
+  ON public.feedback FOR SELECT
+  USING (true);

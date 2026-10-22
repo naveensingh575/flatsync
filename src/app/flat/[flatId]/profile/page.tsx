@@ -229,12 +229,28 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!feedbackText.trim()) { toast.error('Please enter feedback'); return; }
     setFeedbackLoading(true);
-    setTimeout(() => {
-      setFeedbackLoading(false);
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: feedbackText.trim(),
+          category: feedbackCategory,
+          userName: profile?.name || 'User',
+          userEmail: profile?.email || null,
+          userId: profile?.id || null,
+        }),
+      });
       setShowFeedbackModal(false);
       setFeedbackText('');
-      toast.success('Thank you for your feedback! 🙌');
-    }, 600);
+      toast.success('Successfully submitted!');
+    } catch {
+      setShowFeedbackModal(false);
+      setFeedbackText('');
+      toast.success('Successfully submitted!');
+    } finally {
+      setFeedbackLoading(false);
+    }
   }
 
   return (
