@@ -41,6 +41,36 @@ export async function POST(request: NextRequest) {
       console.warn('FormSubmit email forwarding warning:', mailErr);
     }
 
+    // 1b. Send via Brevo API if key is available
+    const brevoKey = process.env.BREVO_API_KEY;
+    if (brevoKey) {
+      try {
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': brevoKey,
+            'accept': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'GrocerySync', email: ADMIN_FEEDBACK_EMAIL },
+            to: [{ email: ADMIN_FEEDBACK_EMAIL, name: 'Admin' }],
+            subject: `[GrocerySync Feedback] ${category.toUpperCase()} from ${userName || 'User'}`,
+            htmlContent: `
+              <h2>New GrocerySync Feedback</h2>
+              <p><strong>From:</strong> ${userName || 'Anonymous'} (${userEmail || 'No email'})</p>
+              <p><strong>Category:</strong> ${category}</p>
+              <p><strong>Message:</strong></p>
+              <blockquote style="background:#f4f4f5;padding:12px;border-radius:8px;">${cleanMessage.replace(/\n/g, '<br/>')}</blockquote>
+              <p style="color:#71717a;font-size:12px;">Submitted at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+            `,
+          }),
+        });
+      } catch (brevoErr) {
+        console.warn('Brevo email error:', brevoErr);
+      }
+    }
+
     // 2. If RESEND_API_KEY is configured, dispatch direct email via Resend
     if (process.env.RESEND_API_KEY) {
       try {
