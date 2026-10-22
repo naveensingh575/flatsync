@@ -322,7 +322,6 @@ export function AddItemForm({
                       if (suggestions.length > 0) setShowSuggestions(true);
                     }}
                     error={error}
-                    autoFocus
                   />
                 </div>
 
