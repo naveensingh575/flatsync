@@ -414,7 +414,7 @@ export function AddItemForm({
                 onChange={(e) => set('quantity', e.target.value)}
               />
               <Input
-                label="For person (optional)"
+                label="For Person"
                 placeholder="e.g. Naveen, Mom, Alex"
                 value={form.for_user ?? ''}
                 onChange={(e) => set('for_user', e.target.value)}
@@ -423,7 +423,7 @@ export function AddItemForm({
 
             {/* Note */}
             <Input
-              label="Note (optional)"
+              label="Note"
               placeholder="e.g. Brand preferences or replacement instructions"
               value={form.note ?? ''}
               onChange={(e) => set('note', e.target.value)}
@@ -432,7 +432,7 @@ export function AddItemForm({
             {/* Preferred Merchant / Specialty Store Tag Dropdown */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                Store / Merchant Tag (optional)
+                Store / Merchant
               </label>
               <div className="relative">
                 <select
@@ -478,7 +478,7 @@ export function AddItemForm({
               )}
             >
               <Zap size={18} className={form.is_urgent ? 'text-red-500 fill-red-500' : ''} />
-              {form.is_urgent ? '⚡ Marked as Urgent' : 'Mark as Urgent (needed today)'}
+              {form.is_urgent ? '⚡ Urgent (needed today)' : 'Urgent (needed today)'}
             </button>
 
             {/* Smart Duplicate Warning & 1-Tap Bump */}
@@ -520,7 +520,7 @@ export function AddItemForm({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Paste shopping list (WhatsApp, Notes, SMS)
+                  Shopping List
                 </label>
                 <span className="text-[11px] text-zinc-400">Bullets & numbers auto-detected</span>
               </div>

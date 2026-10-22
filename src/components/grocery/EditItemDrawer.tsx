@@ -146,7 +146,7 @@ export function EditItemDrawer({
         {/* Store / Merchant Tag Dropdown */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Store / Merchant Tag (optional)
+            Store / Merchant
           </label>
           <div className="relative">
             <select
@@ -218,8 +218,8 @@ export function EditItemDrawer({
               : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
           )}
         >
-          <Zap size={18} className={form.is_urgent ? 'text-red-500' : ''} />
-          {form.is_urgent ? '⚡ Marked as Urgent' : 'Mark as Urgent'}
+          <Zap size={18} className={form.is_urgent ? 'text-red-500 fill-red-500' : ''} />
+          {form.is_urgent ? '⚡ Urgent (needed today)' : 'Urgent (needed today)'}
         </button>
 
         <div className="flex gap-2 pt-2">
