@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const ADMIN_FEEDBACK_EMAIL = 'navisingh210@gmail.com';
+const BREVO_VERIFIED_SENDER = 'naveenofficial210@gmail.com';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
             'accept': 'application/json',
           },
           body: JSON.stringify({
-            sender: { name: 'GrocerySync', email: ADMIN_FEEDBACK_EMAIL },
+            sender: { name: 'GrocerySync', email: BREVO_VERIFIED_SENDER },
             to: [{ email: ADMIN_FEEDBACK_EMAIL, name: 'Admin' }],
             subject: `[GrocerySync Feedback] ${category.toUpperCase()} from ${userName || 'User'}`,
             htmlContent: `

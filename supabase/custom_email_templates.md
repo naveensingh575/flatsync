@@ -14,13 +14,13 @@ This guide contains everything you need to connect your **Brevo SMTP** to Supaba
 
 | Setting | Value to Enter |
 |---|---|
-| **Sender Email** | `navisingh210@gmail.com` *(must match your Brevo account email)* |
+| **Sender Email** | `naveenofficial210@gmail.com` *(your verified Brevo sender)* |
 | **Sender Name** | `GrocerySync` |
 | **Host** | `smtp-relay.brevo.com` |
 | **Port** | `587` |
 | **Minimum Interval Between Emails** | `60` *(or `0`)* |
-| **Username** | `navisingh210@gmail.com` *(or the login email you use for Brevo)* |
-| **Password** | `Your Brevo Master Key` *(the xkeysib-... key from your Brevo SMTP & API page)* |
+| **Username** | `bf73c8001@smtp-brevo.com` |
+| **Password** | `xkeysib-680847... (Your Brevo API Key)` |
 
 6. Click **Save Changes** at the bottom.
 
