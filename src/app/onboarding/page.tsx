@@ -340,7 +340,6 @@ function OnboardingContent() {
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && createGroup()}
-            autoFocus
           />
 
           <Button className="w-full" onClick={createGroup} loading={loading}>
@@ -370,7 +369,6 @@ function OnboardingContent() {
             maxLength={6}
             className="tracking-[0.4em] text-center font-mono text-lg uppercase"
             onKeyDown={(e) => e.key === 'Enter' && joinGroup()}
-            autoFocus
           />
           <Button className="w-full" onClick={joinGroup} loading={loading}>
             <LogIn size={18} /> Join Group

@@ -247,7 +247,7 @@ export function AddItemForm({
                 : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
             )}
           >
-            ⚡ Quick Item (Voice / Search)
+            Item
           </button>
           <button
             type="button"
@@ -260,7 +260,7 @@ export function AddItemForm({
             )}
           >
             <ListPlus size={14} />
-            <span>Paste List (Bulk)</span>
+            <span>List (Bulk)</span>
             {parsedBulkItems.length > 0 && (
               <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                 {parsedBulkItems.length}
@@ -272,11 +272,11 @@ export function AddItemForm({
         {/* MODE 1: SINGLE ITEM (VOICE + AUTOCOMPLETE + STAPLES) */}
         {entryMode === 'single' ? (
           <>
-            {/* Frequent Staples 1-Tap Quick-Shelf */}
+            {/* Frequent Staples Shelf */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                  ⚡ 1-Tap Quick Staples
+                  Quick Staples
                 </span>
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
