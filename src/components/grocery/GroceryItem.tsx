@@ -43,17 +43,20 @@ export function GroceryItemCard({
   const x = useMotionValue(0);
 
   // Background opacity transitions based on drag direction
-  const rightRevealOpacity = useTransform(x, [10, 60], [0, 1]);
-  const leftRevealOpacity = useTransform(x, [-10, -60], [0, 1]);
+  const rightRevealOpacity = useTransform(x, [10, 50], [0, 1]);
+  const leftRevealOpacity = useTransform(x, [-10, -50], [0, 1]);
 
   function handleDragEnd(_: any, info: any) {
-    if (info.offset.x > 70) {
+    const isSwipeRight = info.offset.x > 60 || info.velocity.x > 300;
+    const isSwipeLeft = info.offset.x < -60 || info.velocity.x < -300;
+
+    if (isSwipeRight) {
       // Swiped right -> toggle In Cart
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(20);
       }
       onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
-    } else if (info.offset.x < -70) {
+    } else if (isSwipeLeft) {
       // Swiped left -> Delete item
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(25);
@@ -71,13 +74,13 @@ export function GroceryItemCard({
   return (
     <div className="relative rounded-2xl overflow-hidden select-none">
       {/* Background action reveal layers */}
-      <div className="absolute inset-0 flex items-center justify-between rounded-2xl pointer-events-none">
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
         {/* Swipe Right Reveal: In Cart */}
         <motion.div
           style={{ opacity: rightRevealOpacity }}
-          className="h-full w-full bg-emerald-500 text-white flex items-center justify-start pl-5 gap-2"
+          className="absolute inset-0 bg-emerald-500 text-white flex items-center justify-start pl-5 gap-2.5"
         >
-          <CheckCircle2 size={20} className="text-white" />
+          <CheckCircle2 size={22} className="text-white" />
           <span className="text-xs font-bold tracking-wide">
             {item.status === 'in_cart' ? 'Mark Pending' : 'In Cart'}
           </span>
@@ -86,10 +89,10 @@ export function GroceryItemCard({
         {/* Swipe Left Reveal: Delete */}
         <motion.div
           style={{ opacity: leftRevealOpacity }}
-          className="h-full w-full bg-rose-500 text-white flex items-center justify-end pr-5 gap-2"
+          className="absolute inset-0 bg-rose-500 text-white flex items-center justify-end pr-5 gap-2.5"
         >
           <span className="text-xs font-bold tracking-wide">Delete</span>
-          <Trash2 size={20} className="text-white" />
+          <Trash2 size={22} className="text-white" />
         </motion.div>
       </div>
 
@@ -98,16 +101,17 @@ export function GroceryItemCard({
         layout
         drag="x"
         dragDirectionLock
+        dragSnapToOrigin
         dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.25}
+        dragElastic={0.8}
         onDragEnd={handleDragEnd}
         style={{ x, touchAction: 'pan-y' }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, x: -80, scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 240, damping: 28 }}
+        exit={{ opacity: 0, x: -300, scale: 0.9 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 26 }}
         className={cn(
-          'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-all duration-150 shadow-xs hover:shadow-sm',
+          'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-colors duration-150 shadow-xs hover:shadow-sm',
           item.status === 'in_cart'
             ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/70 dark:border-emerald-800/50 opacity-95'
             : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800/80',
