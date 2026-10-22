@@ -35,6 +35,7 @@ import {
   setAlertsEnabled,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -165,7 +166,7 @@ export default function ProfilePage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update password');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to update password'));
     } finally {
       setPasswordLoading(false);
     }
@@ -219,7 +220,7 @@ export default function ProfilePage() {
       await signOut();
       toast.success('Your account has been deleted');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete account');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to delete account'));
     } finally {
       setDeleteLoading(false);
     }

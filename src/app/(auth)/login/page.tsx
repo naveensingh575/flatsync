@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Sparkles, CheckCircle2, Mail } from 'lucide-react';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 function LoginContent() {
@@ -54,7 +55,7 @@ function LoginContent() {
     try {
       await signIn(email, password, code || undefined);
     } catch (err: any) {
-      toast.error(err.message ?? 'Login failed');
+      toast.error(getFriendlyErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
       setLoading(false);
     }

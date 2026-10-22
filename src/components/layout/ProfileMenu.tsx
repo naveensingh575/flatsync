@@ -37,6 +37,7 @@ import {
   setAlertsEnabled,
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 interface ProfileMenuProps {
@@ -214,7 +215,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update password');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to update password'));
     } finally {
       setPasswordLoading(false);
     }
@@ -232,7 +233,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
       await signOut();
       toast.success('Your account has been deleted');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete account');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to delete account'));
     } finally {
       setDeleteLoading(false);
     }

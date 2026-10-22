@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ArrowLeft, KeyRound, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 function ForgotPasswordContent() {
@@ -117,7 +118,7 @@ function ForgotPasswordContent() {
       setCountdown(60);
     } catch (err: any) {
       console.error('Password reset email error:', err);
-      toast.error(err.message || 'Failed to send reset email. Please try again.');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to send reset email. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,7 @@ function ForgotPasswordContent() {
       toast.success('New password reset email sent! 📬');
       setCountdown(60);
     } catch (err: any) {
-      toast.error(err.message || 'Could not resend email. Please try again.');
+      toast.error(getFriendlyErrorMessage(err, 'Could not resend email. Please try again.'));
     } finally {
       setResending(false);
     }
@@ -175,7 +176,7 @@ function ForgotPasswordContent() {
       router.push('/login');
     } catch (err: any) {
       console.error('Password change error:', err);
-      toast.error(err.message || 'Failed to update password. Your reset link may have expired.');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to update password. Your reset link may have expired.'));
     } finally {
       setLoading(false);
     }

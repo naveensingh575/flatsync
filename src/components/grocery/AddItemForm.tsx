@@ -12,6 +12,7 @@ import { parseGroceryInput, parseBulkGroceryInput } from '@/lib/itemParser';
 import { COMMON_INDIAN_GROCERIES, FREQUENT_STAPLES, GroceryCatalogItem } from '@/lib/groceryCatalog';
 import { findSimilarItem, bumpItemQuantity } from '@/lib/itemMatcher';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 interface AddItemFormProps {
@@ -195,7 +196,7 @@ export function AddItemForm({
       onClose();
     } catch (err: any) {
       console.error('Error adding item:', err);
-      toast.error(err?.message || 'Failed to add item');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to add item'));
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,7 @@ export function AddItemForm({
       onClose();
     } catch (err: any) {
       console.error('Error importing items:', err);
-      toast.error(err?.message || 'Failed to import items');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to import items'));
     } finally {
       setLoading(false);
     }

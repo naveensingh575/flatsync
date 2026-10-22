@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Flat, Profile } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 export function useFlat(flatId?: string) {
@@ -78,28 +79,47 @@ export function useFlat(flatId?: string) {
       const idsToFetch = Array.from(candidateGroupIds);
       let groups: Flat[] = [];
 
-      // 6. Fetch full details for all discovered groups
+      // 6. Fetch full details for all discovered groups (try groups first, fallback to flats)
       if (idsToFetch.length > 0) {
-        const { data: fetchedFlats } = await supabase
-          .from('flats')
-          .select('*')
-          .in('id', idsToFetch);
+        let fetchedGroups: any = null;
+        try {
+          const res = await supabase.from('groups').select('*').in('id', idsToFetch);
+          if (!res.error && res.data && res.data.length > 0) {
+            fetchedGroups = res.data;
+          }
+        } catch (_) {}
 
-        if (fetchedFlats && fetchedFlats.length > 0) {
-          groups = fetchedFlats as Flat[];
+        if (!fetchedGroups || fetchedGroups.length === 0) {
+          try {
+            const res = await supabase.from('flats').select('*').in('id', idsToFetch);
+            if (!res.error && res.data) {
+              fetchedGroups = res.data;
+            }
+          } catch (_) {}
+        }
+
+        if (fetchedGroups && fetchedGroups.length > 0) {
+          groups = fetchedGroups as Flat[];
         }
       }
 
-      // Fallback: If still empty, check flats directly by profile.flat_id
+      // Fallback: If still empty, check groups/flats directly by profile.flat_id
       if (groups.length === 0 && profile?.flat_id) {
-        const { data: directFlat } = await supabase
-          .from('flats')
-          .select('*')
-          .eq('id', profile.flat_id)
-          .maybeSingle();
+        let directGroup: any = null;
+        try {
+          const res = await supabase.from('groups').select('*').eq('id', profile.flat_id).maybeSingle();
+          if (res.data) directGroup = res.data;
+        } catch (_) {}
 
-        if (directFlat) {
-          groups = [directFlat as Flat];
+        if (!directGroup) {
+          try {
+            const res = await supabase.from('flats').select('*').eq('id', profile.flat_id).maybeSingle();
+            if (res.data) directGroup = res.data;
+          } catch (_) {}
+        }
+
+        if (directGroup) {
+          groups = [directGroup as Flat];
         }
       }
 
@@ -243,7 +263,7 @@ export function useFlat(flatId?: string) {
       return true;
     } catch (err: any) {
       console.error('Error promoting member to admin:', err);
-      toast.error(err.message || 'Failed to promote member to admin');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to promote member to admin'));
       return false;
     }
   }
@@ -321,7 +341,7 @@ export function useFlat(flatId?: string) {
       return true;
     } catch (err: any) {
       console.error('Error deleting group:', err);
-      toast.error(err.message || 'Failed to delete group');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to delete group'));
       return false;
     }
   }
@@ -334,13 +354,24 @@ export function useFlat(flatId?: string) {
     }
 
     try {
-      const [flatRes, legacyMembersRes, junctionRows] = await Promise.all([
-        supabase.from('flats').select('*').eq('id', flatId).maybeSingle(),
+      // 1. Fetch group details (try groups first, fallback to flats)
+      let resolvedFlat: Flat | null = null;
+      try {
+        const res = await supabase.from('groups').select('*').eq('id', flatId).maybeSingle();
+        if (res.data) resolvedFlat = res.data as Flat;
+      } catch (_) {}
+
+      if (!resolvedFlat) {
+        try {
+          const res = await supabase.from('flats').select('*').eq('id', flatId).maybeSingle();
+          if (res.data) resolvedFlat = res.data as Flat;
+        } catch (_) {}
+      }
+
+      const [legacyMembersRes, junctionRows] = await Promise.all([
         supabase.from('profiles').select('*').eq('flat_id', flatId),
         supabase.from('group_members').select('user_id, role').eq('group_id', flatId),
       ]);
-
-      let resolvedFlat = (flatRes.data as Flat) ?? null;
       if (!resolvedFlat && flatId) {
         // Fallback to memory store or localStorage cache
         const cachedFromStore = userGroups.find((g) => g.id === flatId);
@@ -374,7 +405,7 @@ export function useFlat(flatId?: string) {
       // 1. Add legacy members from profiles.flat_id
       ((legacyMembersRes.data as Profile[]) ?? []).forEach((m) => {
         if (m && m.id) {
-          const isCreator = flatRes.data?.created_by === m.id;
+          const isCreator = resolvedFlat?.created_by === m.id;
           memberMap.set(m.id, {
             ...m,
             name: m.name || 'Member',
@@ -396,7 +427,7 @@ export function useFlat(flatId?: string) {
 
         (junctionProfiles ?? []).forEach((p: Profile) => {
           if (p && p.id) {
-            const isCreator = flatRes.data?.created_by === p.id;
+            const isCreator = resolvedFlat?.created_by === p.id;
             memberMap.set(p.id, {
               ...p,
               name: p.name || 'Member',
@@ -408,13 +439,13 @@ export function useFlat(flatId?: string) {
 
       // 3. Ensure current profile is present if they belong to this group
       if (profile?.id && profile.name) {
-        const isCreator = flatRes.data?.created_by === profile.id;
+        const isCreator = resolvedFlat?.created_by === profile.id;
         const assignedRole: 'admin' | 'member' = isCreator ? 'admin' : (roleMap.get(profile.id) || 'member');
 
         if (memberMap.has(profile.id)) {
           const current = memberMap.get(profile.id)!;
           memberMap.set(profile.id, { ...current, name: profile.name, role: assignedRole });
-        } else if (flatRes.data?.id === flatId) {
+        } else if (resolvedFlat?.id === flatId) {
           memberMap.set(profile.id, { ...profile, role: assignedRole });
         }
       }

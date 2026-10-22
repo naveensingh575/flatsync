@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { GroceryItem, ItemStatus, AddItemPayload } from '@/types/app.types';
 import { useAppStore } from '@/store/useAppStore';
 import { enqueueOfflineAction, flushOfflineQueue, getOfflineQueue } from '@/lib/offlineQueue';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 export function useGroceryList(flatId: string) {
@@ -234,7 +235,7 @@ export function useGroceryList(flatId: string) {
           if (fallbackRes.error.message.includes('row-level security')) {
             console.warn('RLS policy requires membership sync');
           } else {
-            toast.error(fallbackRes.error.message || 'Failed to sync item to database');
+            toast.error(getFriendlyErrorMessage(fallbackRes.error, 'Failed to save item to group'));
           }
         }
       } else if (data) {
@@ -391,7 +392,7 @@ export function useGroceryList(flatId: string) {
         if (fallbackRes.error) {
           console.error('Fallback update failed:', fallbackRes.error);
           setItems(previous);
-          toast.error(fallbackRes.error.message || 'Failed to update item');
+          toast.error(getFriendlyErrorMessage(fallbackRes.error, 'Failed to update item'));
         }
       }
     } catch (err: any) {

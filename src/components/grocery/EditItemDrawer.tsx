@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { GroceryItem, AddItemPayload, ItemCategory } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 interface EditItemDrawerProps {
@@ -65,7 +66,7 @@ export function EditItemDrawer({
       onClose();
     } catch (err: any) {
       console.error('Error saving item:', err);
-      toast.error(err?.message || 'Failed to save changes');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to save changes'));
     } finally {
       setSaving(false);
     }
@@ -78,7 +79,7 @@ export function EditItemDrawer({
       onClose();
     } catch (err: any) {
       console.error('Error deleting item:', err);
-      toast.error(err?.message || 'Failed to delete item');
+      toast.error(getFriendlyErrorMessage(err, 'Failed to delete item'));
     }
   }
 

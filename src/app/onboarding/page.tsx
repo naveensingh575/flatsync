@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { generateJoinCode, cn } from '@/lib/utils';
 import { GROUP_TYPES } from '@/lib/constants';
 import { GroupType } from '@/types/app.types';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 type Mode = 'choose' | 'create' | 'join';
@@ -64,8 +65,10 @@ function OnboardingContent() {
     try {
       const code = generateJoinCode();
       let group: any = null;
-      const { data: newGroup, error } = await supabase
-        .from('flats')
+
+      // 1. Try 'groups' table first (new schema)
+      const tryGroups = await supabase
+        .from('groups')
         .insert({
           name: groupName.trim(),
           join_code: code,
@@ -76,10 +79,12 @@ function OnboardingContent() {
         .select()
         .single();
 
-      if (error) {
-        // Fallback without created_by if database column is pending migration
-        const fallback = await supabase
-          .from('flats')
+      if (!tryGroups.error && tryGroups.data) {
+        group = tryGroups.data;
+      } else {
+        // Fallback: try 'groups' without created_by if column doesn't exist
+        const tryGroupsNoCreator = await supabase
+          .from('groups')
           .insert({
             name: groupName.trim(),
             join_code: code,
@@ -89,10 +94,45 @@ function OnboardingContent() {
           .select()
           .single();
 
-        if (fallback.error) throw fallback.error;
-        group = fallback.data;
-      } else {
-        group = newGroup;
+        if (!tryGroupsNoCreator.error && tryGroupsNoCreator.data) {
+          group = tryGroupsNoCreator.data;
+        } else {
+          // Fallback: try 'flats' table (legacy schema)
+          const tryFlats = await supabase
+            .from('flats')
+            .insert({
+              name: groupName.trim(),
+              join_code: code,
+              group_type: selectedType,
+              icon: activeGroupType.emoji,
+              created_by: profile.id,
+            })
+            .select()
+            .single();
+
+          if (!tryFlats.error && tryFlats.data) {
+            group = tryFlats.data;
+          } else {
+            // Fallback: try 'flats' without created_by
+            const tryFlatsNoCreator = await supabase
+              .from('flats')
+              .insert({
+                name: groupName.trim(),
+                join_code: code,
+                group_type: selectedType,
+                icon: activeGroupType.emoji,
+              })
+              .select()
+              .single();
+
+            if (tryFlatsNoCreator.error) throw tryFlatsNoCreator.error;
+            group = tryFlatsNoCreator.data;
+          }
+        }
+      }
+
+      if (!group || !group.id) {
+        throw new Error('Failed to create group');
       }
 
       // 1. Preserve previous group in group_members if present
@@ -121,7 +161,8 @@ function OnboardingContent() {
       toast.success(`${group.name} created! Code: ${code}`);
       router.push(`/flat/${group.id}`);
     } catch (err: any) {
-      toast.error(err.message ?? 'Failed to create group');
+      console.error('Group creation error:', err);
+      toast.error(getFriendlyErrorMessage(err, 'Unable to create group. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -133,13 +174,33 @@ function OnboardingContent() {
     if (!profile?.id) { toast.error('Please log in first'); return; }
     setLoading(true);
     try {
-      const { data: group, error } = await supabase
-        .from('flats')
+      let group: any = null;
+
+      // 1. Try 'groups' table first
+      const { data: groupData, error: groupErr } = await supabase
+        .from('groups')
         .select('*')
         .eq('join_code', code)
-        .single();
+        .maybeSingle();
 
-      if (error || !group) throw new Error('Invalid code. Check with group members!');
+      if (!groupErr && groupData) {
+        group = groupData;
+      } else {
+        // Fallback: try 'flats' table
+        const { data: flatData, error: flatErr } = await supabase
+          .from('flats')
+          .select('*')
+          .eq('join_code', code)
+          .maybeSingle();
+
+        if (flatData) {
+          group = flatData;
+        } else if (flatErr) {
+          throw flatErr;
+        }
+      }
+
+      if (!group) throw new Error('Invalid code. Check with group members!');
 
       // 1. Preserve previous group in group_members if present
       if (profile.flat_id && profile.flat_id !== group.id) {
@@ -167,7 +228,8 @@ function OnboardingContent() {
       toast.success(`Joined ${group.name}! 🎉`);
       router.push(`/flat/${group.id}`);
     } catch (err: any) {
-      toast.error(err.message ?? 'Failed to join group');
+      console.error('Group join error:', err);
+      toast.error(getFriendlyErrorMessage(err, 'Could not find a group with this join code. Please check and try again.'));
     } finally {
       setLoading(false);
     }

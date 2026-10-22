@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Sparkles } from 'lucide-react';
+import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 function RegisterContent() {
@@ -42,7 +43,7 @@ function RegisterContent() {
       await signUp(email, password, name.trim(), code || undefined);
       toast.success('Verification email sent! Please check your inbox and verify to sign in 📬', { duration: 6000 });
     } catch (err: any) {
-      toast.error(err.message ?? 'Sign up failed');
+      toast.error(getFriendlyErrorMessage(err, 'Sign up failed. Please check your information and try again.'));
     } finally {
       setLoading(false);
     }
