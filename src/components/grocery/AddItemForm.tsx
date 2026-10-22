@@ -184,15 +184,21 @@ export function AddItemForm({
     }
     setError('');
     setLoading(true);
-    await onAdd({
-      ...form,
-      quantity: form.quantity || null,
-      note: form.note || null,
-      for_user: form.for_user?.trim() || null,
-    });
-    setForm({ ...defaultState });
-    setLoading(false);
-    onClose();
+    try {
+      await onAdd({
+        ...form,
+        quantity: form.quantity || null,
+        note: form.note || null,
+        for_user: form.for_user?.trim() || null,
+      });
+      setForm({ ...defaultState });
+      onClose();
+    } catch (err: any) {
+      console.error('Error adding item:', err);
+      toast.error(err?.message || 'Failed to add item');
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Bulk Batch Submit
@@ -204,24 +210,30 @@ export function AddItemForm({
     }
 
     setLoading(true);
-    if (onAddBatch) {
-      await onAddBatch(selected);
-    } else {
-      for (const item of selected) {
-        await onAdd(item);
+    try {
+      if (onAddBatch) {
+        await onAddBatch(selected);
+      } else {
+        for (const item of selected) {
+          await onAdd(item);
+        }
       }
-    }
 
-    toast.success(`Imported ${selected.length} items to list! 🚀`);
-    setBulkText('');
-    setParsedBulkItems([]);
-    setLoading(false);
-    onClose();
+      toast.success(`Imported ${selected.length} items to list! 🚀`);
+      setBulkText('');
+      setParsedBulkItems([]);
+      onClose();
+    } catch (err: any) {
+      console.error('Error importing items:', err);
+      toast.error(err?.message || 'Failed to import items');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Drawer open={open} onClose={onClose} title="Add Items to List 🛒" className="max-h-[95vh]">
-      <div className="p-5 space-y-4">
+      <div className="p-5 pb-10 space-y-4">
         {/* Entry Mode Tab Switcher */}
         <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800/80 p-1">
           <button

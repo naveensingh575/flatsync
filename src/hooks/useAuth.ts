@@ -52,7 +52,7 @@ export function useAuth() {
     loadInitialSession();
 
     // 2. Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event: any, session: any) => {
       if (session?.user) {
         const { data: userProfile } = await supabase
           .from('profiles')

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { GroceryItem, AddItemPayload, ItemCategory } from '@/types/app.types';
 import { ITEM_CATEGORIES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface EditItemDrawerProps {
   item: GroceryItem | null;
@@ -52,27 +53,38 @@ export function EditItemDrawer({
   async function handleSave() {
     if (!item) return;
     setSaving(true);
-    await onSave(item.id, {
-      item_name: form.item_name.trim() || item.item_name,
-      category: form.category,
-      is_urgent: form.is_urgent,
-      quantity: form.quantity || null,
-      note: form.note || null,
-      for_user: form.for_user?.trim() || null,
-    });
-    setSaving(false);
-    onClose();
+    try {
+      await onSave(item.id, {
+        item_name: form.item_name.trim() || item.item_name,
+        category: form.category,
+        is_urgent: form.is_urgent,
+        quantity: form.quantity || null,
+        note: form.note || null,
+        for_user: form.for_user?.trim() || null,
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving item:', err);
+      toast.error(err?.message || 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete() {
     if (!item) return;
-    await onDelete(item.id);
-    onClose();
+    try {
+      await onDelete(item.id);
+      onClose();
+    } catch (err: any) {
+      console.error('Error deleting item:', err);
+      toast.error(err?.message || 'Failed to delete item');
+    }
   }
 
   return (
     <Drawer open={open} onClose={onClose} title="Edit Item ✏️">
-      <div className="p-5 space-y-4">
+      <div className="p-5 pb-10 space-y-4">
         {/* Author & Editor Attribution Banner */}
         <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 rounded-xl border border-zinc-150 dark:border-zinc-800">
           <span>Added by <strong className="text-zinc-700 dark:text-zinc-200">{item.requested_by?.name || 'Member'}</strong></span>

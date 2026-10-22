@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 export function useGroceryList(flatId: string) {
   const supabase = createClient();
-  const { profile } = useAppStore();
+  const { profile, setProfile } = useAppStore();
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
@@ -63,7 +63,7 @@ export function useGroceryList(flatId: string) {
           .select('*')
           .in('id', editorIds);
 
-        const editorMap = new Map((editorProfiles || []).map((p) => [p.id, p]));
+        const editorMap = new Map((editorProfiles || []).map((p: any) => [p.id, p]));
         fetchedItems = fetchedItems.map((item) => ({
           ...item,
           last_edited_by: item.last_edited_by_id
@@ -96,7 +96,7 @@ export function useGroceryList(flatId: string) {
           fetchItems();
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: any) => {
         setIsConnected(status === 'SUBSCRIBED');
       });
 
@@ -125,14 +125,33 @@ export function useGroceryList(flatId: string) {
 
   // 100% Optimistic Add Item
   async function addItem(payload: AddItemPayload) {
-    if (!profile?.id) return;
+    let currentProfile = profile;
+    if (!currentProfile?.id) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          currentProfile = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            avatar_url: null,
+            flat_id: flatId,
+            joined_at: new Date().toISOString(),
+          };
+          setProfile(currentProfile);
+        }
+      } catch (_) {}
+    }
+    if (!currentProfile?.id) {
+      toast.error('Please sign in to add items');
+      return;
+    }
 
     const tempId = 'temp-' + Date.now();
     const optimisticItem: GroceryItem = {
       id: tempId,
       flat_id: flatId,
-      requested_by_id: profile.id,
-      requested_by: profile,
+      requested_by_id: currentProfile.id,
+      requested_by: currentProfile,
       item_name: payload.item_name,
       category: payload.category,
       is_urgent: payload.is_urgent,
@@ -153,7 +172,7 @@ export function useGroceryList(flatId: string) {
     if (typeof window !== 'undefined' && !navigator.onLine) {
       enqueueOfflineAction({
         type: 'ADD_ITEM',
-        payload: { flatId, userId: profile.id, itemPayload: payload, tempId },
+        payload: { flatId, userId: currentProfile.id, itemPayload: payload, tempId },
       });
       toast('Saved offline (will sync when online) 📴', { icon: '📴' });
       return;
@@ -164,12 +183,12 @@ export function useGroceryList(flatId: string) {
       try {
         await supabase
           .from('group_members')
-          .upsert({ group_id: flatId, user_id: profile.id, role: 'member' }, { onConflict: 'group_id,user_id' });
+          .upsert({ group_id: flatId, user_id: currentProfile.id, role: 'member' }, { onConflict: 'group_id,user_id' });
       } catch (_) {}
 
-      if (profile.flat_id !== flatId) {
+      if (currentProfile.flat_id !== flatId) {
         try {
-          await supabase.from('profiles').update({ flat_id: flatId }).eq('id', profile.id);
+          await supabase.from('profiles').update({ flat_id: flatId }).eq('id', currentProfile.id);
         } catch (_) {}
       }
 
@@ -179,7 +198,7 @@ export function useGroceryList(flatId: string) {
         .insert({
           ...payload,
           flat_id: flatId,
-          requested_by_id: profile.id,
+          requested_by_id: currentProfile.id,
           status: 'pending',
         })
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
@@ -192,7 +211,7 @@ export function useGroceryList(flatId: string) {
           item_name: payload.item_name,
           category: payload.category,
           flat_id: flatId,
-          requested_by_id: profile.id,
+          requested_by_id: currentProfile.id,
           status: 'pending',
         };
         if (payload.quantity) fallbackPayload.quantity = payload.quantity;
@@ -232,13 +251,34 @@ export function useGroceryList(flatId: string) {
 
   // 100% Optimistic Batch Add Items (Multi-Item Paste)
   async function addBatchItems(payloads: AddItemPayload[]) {
-    if (!profile || payloads.length === 0) return;
+    if (payloads.length === 0) return;
+
+    let currentProfile = profile;
+    if (!currentProfile?.id) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          currentProfile = {
+            id: session.user.id,
+            name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+            avatar_url: null,
+            flat_id: flatId,
+            joined_at: new Date().toISOString(),
+          };
+          setProfile(currentProfile);
+        }
+      } catch (_) {}
+    }
+    if (!currentProfile?.id) {
+      toast.error('Please sign in to add items');
+      return;
+    }
 
     const tempItems: GroceryItem[] = payloads.map((payload, idx) => ({
       id: `temp-${Date.now()}-${idx}`,
       flat_id: flatId,
-      requested_by_id: profile.id,
-      requested_by: profile,
+      requested_by_id: currentProfile.id,
+      requested_by: currentProfile,
       for_user: payload.for_user || null,
       item_name: payload.item_name,
       category: payload.category || 'other',
@@ -264,7 +304,7 @@ export function useGroceryList(flatId: string) {
         note: p.note || null,
         for_user: p.for_user || null,
         flat_id: flatId,
-        requested_by_id: profile.id,
+        requested_by_id: currentProfile.id,
         status: 'pending',
       }));
 

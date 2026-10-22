@@ -55,7 +55,7 @@ function ForgotPasswordContent() {
     checkRecoverySession();
 
     // Listen for PASSWORD_RECOVERY auth event
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any) => {
       if (event === 'PASSWORD_RECOVERY') {
         setMode('reset');
       }

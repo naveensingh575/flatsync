@@ -17,7 +17,14 @@ export function useFlat(flatId?: string) {
 
   // Fetch all groups the current user belongs to (multi-source & self-healing)
   const fetchUserGroups = useCallback(async () => {
-    if (!profile?.id) return;
+    let currentUserId = profile?.id;
+    if (!currentUserId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        currentUserId = session?.user?.id;
+      } catch (_) {}
+    }
+    if (!currentUserId) return;
 
     try {
       const candidateGroupIds = new Set<string>();
@@ -27,17 +34,17 @@ export function useFlat(flatId?: string) {
         const { data: memberRows, error: memberErr } = await supabase
           .from('group_members')
           .select('group_id')
-          .eq('user_id', profile.id);
+          .eq('user_id', currentUserId);
 
         if (!memberErr && memberRows) {
-          memberRows.forEach((r) => {
+          memberRows.forEach((r: any) => {
             if (r.group_id) candidateGroupIds.add(r.group_id);
           });
         }
       } catch (_) {}
 
       // 2. Always include profile.flat_id if present
-      if (profile.flat_id) {
+      if (profile?.flat_id) {
         candidateGroupIds.add(profile.flat_id);
       }
 
@@ -58,11 +65,11 @@ export function useFlat(flatId?: string) {
         const { data: userItems } = await supabase
           .from('items')
           .select('flat_id')
-          .eq('requested_by_id', profile.id)
+          .eq('requested_by_id', currentUserId)
           .limit(20);
 
         if (userItems) {
-          userItems.forEach((i) => {
+          userItems.forEach((i: any) => {
             if (i.flat_id) candidateGroupIds.add(i.flat_id);
           });
         }
@@ -84,7 +91,7 @@ export function useFlat(flatId?: string) {
       }
 
       // Fallback: If still empty, check flats directly by profile.flat_id
-      if (groups.length === 0 && profile.flat_id) {
+      if (groups.length === 0 && profile?.flat_id) {
         const { data: directFlat } = await supabase
           .from('flats')
           .select('*')
@@ -109,7 +116,7 @@ export function useFlat(flatId?: string) {
       finalGroups.forEach(async (g) => {
         try {
           await supabase.from('group_members').upsert(
-            { group_id: g.id, user_id: profile.id, role: 'member' },
+            { group_id: g.id, user_id: currentUserId, role: 'member' },
             { onConflict: 'group_id,user_id' }
           );
         } catch (_) {}
@@ -333,7 +340,28 @@ export function useFlat(flatId?: string) {
         supabase.from('group_members').select('user_id, role').eq('group_id', flatId),
       ]);
 
-      setFlat((flatRes.data as Flat) ?? null);
+      let resolvedFlat = (flatRes.data as Flat) ?? null;
+      if (!resolvedFlat && flatId) {
+        // Fallback to memory store or localStorage cache
+        const cachedFromStore = userGroups.find((g) => g.id === flatId);
+        if (cachedFromStore) {
+          resolvedFlat = cachedFromStore;
+        } else {
+          try {
+            const raw = localStorage.getItem(`flatsync_group_${flatId}`);
+            if (raw) resolvedFlat = JSON.parse(raw);
+          } catch (_) {}
+        }
+      }
+
+      if (resolvedFlat) {
+        setFlat(resolvedFlat);
+        try {
+          localStorage.setItem(`flatsync_group_${flatId}`, JSON.stringify(resolvedFlat));
+        } catch (_) {}
+      } else {
+        setFlat(null);
+      }
 
       const memberMap = new Map<string, Profile>();
 

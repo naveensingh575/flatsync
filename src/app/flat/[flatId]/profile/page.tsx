@@ -73,7 +73,7 @@ export default function ProfilePage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: any) => {
       if (data?.user?.email) setUserEmail(data.user.email);
     });
 

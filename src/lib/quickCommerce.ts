@@ -58,89 +58,60 @@ export function isMobileDevice(): boolean {
 
 /**
  * 1-Tap App Launcher:
- * Attempts native app deep-link scheme on mobile, falling back to web store.
- * Opens web store directly on desktop.
+ * Uses official Universal / App Links (HTTPS) that iOS and Android automatically route
+ * directly into the native app if installed, or smoothly open the mobile web store.
+ * Synchronous execution inside user gesture prevents browser popup blocking.
  */
 export function openQuickCommerceApp(platform: Platform): void {
   if (platform === 'other') {
-    window.open('https://www.google.com/search?q=grocery+delivery', '_blank');
+    window.open('https://www.google.com/search?q=grocery+delivery', '_blank', 'noopener,noreferrer');
     return;
   }
 
   const app = QUICK_COMMERCE_APPS[platform];
   if (!app) return;
 
-  if (isMobileDevice()) {
-    const start = Date.now();
-    // Attempt deep link
-    window.location.href = app.appScheme;
-
-    // Fallback to web if app isn't installed after 1.5 seconds
-    setTimeout(() => {
-      const elapsed = Date.now() - start;
-      if (document.hidden || elapsed > 2500) {
-        // App opened successfully
-        return;
-      }
-      window.open(app.webFallback, '_blank');
-    }, 1500);
-  } else {
-    // Desktop: Open web URL directly
-    window.open(app.webFallback, '_blank');
+  const targetUrl = app.webFallback;
+  try {
+    const win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = targetUrl;
+    }
+  } catch (_) {
+    window.location.href = targetUrl;
   }
 }
 
 /**
- * 1-Tap Item Search Deep-Link:
- * Directly opens the quick-commerce app (or web store) into the search view for the specific grocery item.
- * On mobile, attempts app deep-link first and falls back to the search page.
+ * 1-Tap Item Search Universal Deep-Link:
+ * Opens Blinkit, Zepto, or Instamart directly into the search results for the given item.
+ * - Blinkit: https://blinkit.com/s/?q=...
+ * - Zepto: https://www.zeptonow.com/search?q=... (verified official ?q= query parameter)
+ * - Instamart: https://www.swiggy.com/instamart/search?query=...
+ * 
+ * Works synchronously on mobile iOS & Android without triggering popup blocker.
  */
 export function searchItemInQuickCommerceApp(platform: Platform, itemName: string, quantity?: string | null): void {
   const cleanName = itemName.trim();
   const queryParam = encodeURIComponent(cleanName);
 
+  let targetUrl = '';
   if (platform === 'blinkit') {
-    const webUrl = `https://blinkit.com/s/?q=${queryParam}`;
-    const appUri = `blinkit://search?q=${queryParam}`;
-    if (isMobileDevice()) {
-      window.location.href = appUri;
-      setTimeout(() => {
-        window.open(webUrl, '_blank');
-      }, 1400);
-    } else {
-      window.open(webUrl, '_blank');
-    }
-    return;
+    targetUrl = `https://blinkit.com/s/?q=${queryParam}`;
+  } else if (platform === 'zepto') {
+    targetUrl = `https://www.zeptonow.com/search?q=${queryParam}`;
+  } else if (platform === 'instamart') {
+    targetUrl = `https://www.swiggy.com/instamart/search?query=${queryParam}`;
+  } else {
+    targetUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanName + ' buy online')}`;
   }
 
-  if (platform === 'zepto') {
-    const webUrl = `https://www.zeptonow.com/search?query=${queryParam}`;
-    const appUri = `zeptonow://search?query=${queryParam}`;
-    if (isMobileDevice()) {
-      window.location.href = appUri;
-      setTimeout(() => {
-        window.open(webUrl, '_blank');
-      }, 1400);
-    } else {
-      window.open(webUrl, '_blank');
+  try {
+    const win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = targetUrl;
     }
-    return;
+  } catch (_) {
+    window.location.href = targetUrl;
   }
-
-  if (platform === 'instamart') {
-    const webUrl = `https://www.swiggy.com/instamart/search?query=${queryParam}`;
-    const appUri = `swiggy://instamart/search?query=${queryParam}`;
-    if (isMobileDevice()) {
-      window.location.href = appUri;
-      setTimeout(() => {
-        window.open(webUrl, '_blank');
-      }, 1400);
-    } else {
-      window.open(webUrl, '_blank');
-    }
-    return;
-  }
-
-  // Fallback Google search
-  window.open(`https://www.google.com/search?q=${encodeURIComponent(cleanName + ' buy online')}`, '_blank');
 }

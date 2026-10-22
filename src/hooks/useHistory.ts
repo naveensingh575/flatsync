@@ -73,7 +73,7 @@ export function useHistory(flatId: string) {
           .select('*')
           .in('id', editorIds);
 
-        const editorMap = new Map((editorProfiles || []).map((p) => [p.id, p]));
+        const editorMap = new Map((editorProfiles || []).map((p: any) => [p.id, p]));
         itemsList = itemsList.map((item) => ({
           ...item,
           last_edited_by: item.last_edited_by_id

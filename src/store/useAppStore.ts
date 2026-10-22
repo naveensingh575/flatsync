@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { GroceryItem, OrderingSession, Profile, Flat } from '@/types/app.types';
 
 interface AppState {
@@ -37,34 +38,48 @@ interface AppState {
   clearOptimisticItems: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  profile: null,
-  setProfile: (profile) => set({ profile }),
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      profile: null,
+      setProfile: (profile) => set({ profile }),
 
-  userGroups: [],
-  setUserGroups: (userGroups) => set({ userGroups }),
-  currentGroupId: null,
-  setCurrentGroupId: (currentGroupId) => set({ currentGroupId }),
+      userGroups: [],
+      setUserGroups: (userGroups) => set({ userGroups }),
+      currentGroupId: null,
+      setCurrentGroupId: (currentGroupId) => set({ currentGroupId }),
 
-  activeSession: null,
-  setActiveSession: (session) => set({ activeSession: session }),
+      activeSession: null,
+      setActiveSession: (session) => set({ activeSession: session }),
 
-  isAddItemOpen: false,
-  setIsAddItemOpen: (open) => set({ isAddItemOpen: open }),
+      isAddItemOpen: false,
+      setIsAddItemOpen: (open) => set({ isAddItemOpen: open }),
 
-  isOrderDrawerOpen: false,
-  setIsOrderDrawerOpen: (open) => set({ isOrderDrawerOpen: open }),
+      isOrderDrawerOpen: false,
+      setIsOrderDrawerOpen: (open) => set({ isOrderDrawerOpen: open }),
 
-  isOrderingMode: false,
-  setIsOrderingMode: (mode) => set({ isOrderingMode: mode }),
+      isOrderingMode: false,
+      setIsOrderingMode: (mode) => set({ isOrderingMode: mode }),
 
-  selectedCategory: 'all',
-  setSelectedCategory: (cat) => set({ selectedCategory: cat }),
+      selectedCategory: 'all',
+      setSelectedCategory: (cat) => set({ selectedCategory: cat }),
 
-  optimisticItems: [],
-  addOptimisticItem: (item) =>
-    set((s) => ({ optimisticItems: [item, ...s.optimisticItems] })),
-  removeOptimisticItem: (id) =>
-    set((s) => ({ optimisticItems: s.optimisticItems.filter((i) => i.id !== id) })),
-  clearOptimisticItems: () => set({ optimisticItems: [] }),
-}));
+      optimisticItems: [],
+      addOptimisticItem: (item) =>
+        set((s) => ({ optimisticItems: [item, ...s.optimisticItems] })),
+      removeOptimisticItem: (id) =>
+        set((s) => ({ optimisticItems: s.optimisticItems.filter((i) => i.id !== id) })),
+      clearOptimisticItems: () => set({ optimisticItems: [] }),
+    }),
+    {
+      name: 'flatsync-app-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        profile: state.profile,
+        userGroups: state.userGroups,
+        currentGroupId: state.currentGroupId,
+        selectedCategory: state.selectedCategory,
+      }),
+    }
+  )
+);
