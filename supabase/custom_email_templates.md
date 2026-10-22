@@ -20,7 +20,7 @@ This guide contains everything you need to connect your **Brevo SMTP** to Supaba
 | **Port** | `587` |
 | **Minimum Interval Between Emails** | `60` *(or `0`)* |
 | **Username** | `bf73c8001@smtp-brevo.com` |
-| **Password** | `xkeysib-680847... (Your Brevo API Key)` |
+| **Password** | `[Your Brevo Master API Key from Brevo Dashboard]` |
 
 6. Click **Save Changes** at the bottom.
 
