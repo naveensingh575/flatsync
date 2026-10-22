@@ -155,14 +155,21 @@ export function useAuth() {
 
   async function signUp(email: string, password: string, name: string, pendingCode?: string) {
     const trimmedName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
         data: { name: trimmedName },
       },
     });
     if (error) throw error;
+
+    // Supabase returns an empty user identities list or already confirmed user when the email already exists
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error('An account with this email already exists. Only one account per email is allowed. Please sign in or reset your password.');
+    }
 
     if (data.user) {
       const newProfile: Profile = {

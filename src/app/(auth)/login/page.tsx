@@ -89,15 +89,25 @@ function LoginContent() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <Input
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          autoFocus={!!email}
-        />
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Password</label>
+            <Link
+              href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
+              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <Input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoFocus={!!email}
+          />
+        </div>
         <Button type="submit" className="w-full" size="lg" loading={loading}>
           Sign In
         </Button>
