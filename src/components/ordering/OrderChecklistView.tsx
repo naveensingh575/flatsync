@@ -205,7 +205,11 @@ export function OrderChecklistView({
                   )}
                 >
                   <button
+                    type="button"
                     onClick={() => {
+                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                        navigator.vibrate(15);
+                      }
                       if (isOos) {
                         setOosItemIds((prev) => {
                           const next = new Set(prev);
@@ -215,7 +219,7 @@ export function OrderChecklistView({
                       }
                       onUpdateStatus(item.id, isInCart ? 'pending' : 'in_cart');
                     }}
-                    className="flex-shrink-0"
+                    className="flex-shrink-0 cursor-pointer select-none touch-manipulation active:scale-90"
                     title={isInCart ? 'Remove from cart' : 'Bag item into cart'}
                   >
                     <motion.div

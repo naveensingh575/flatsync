@@ -285,7 +285,7 @@ export function AddItemForm({
                     key={staple.name}
                     type="button"
                     onClick={() => selectSuggestion(staple)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 whitespace-nowrap transition-transform active:scale-95"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 active:bg-zinc-250 dark:active:bg-zinc-650 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 whitespace-nowrap transition-all cursor-pointer select-none touch-manipulation active:scale-95 active:translate-y-0.5 shadow-2xs"
                   >
                     <span>{staple.emoji}</span>
                     <span>{staple.name}</span>

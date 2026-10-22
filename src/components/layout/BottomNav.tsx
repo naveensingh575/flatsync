@@ -59,16 +59,19 @@ export function BottomNav({
           <button
             type="button"
             onClick={() => {
+              if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(12);
+              }
               if (onAddItem) {
                 onAddItem();
               } else {
                 router.push(`/flat/${flatId}?add=true`);
               }
             }}
-            className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all active:scale-95 cursor-pointer group"
+            className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group touch-manipulation select-none active:scale-95"
             title="Add Item to List"
           >
-            <div className="w-9 h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 transition-transform group-hover:scale-105">
+            <div className="w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 border-t border-emerald-400/30 transition-transform group-hover:scale-105 active:scale-90">
               <Plus size={19} strokeWidth={2.8} />
             </div>
             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tracking-tight leading-none mt-0.5">
@@ -80,11 +83,16 @@ export function BottomNav({
           {isOrderingActive ? (
             <button
               type="button"
-              onClick={onViewChecklist}
-              className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all active:scale-95 cursor-pointer group"
+              onClick={() => {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(12);
+                }
+                if (onViewChecklist) onViewChecklist();
+              }}
+              className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group touch-manipulation select-none active:scale-95"
               title={`Active Order Checklist (${inCartCount}/${totalCount})`}
             >
-              <div className="relative w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/30 animate-pulse transition-transform group-hover:scale-105">
+              <div className="relative w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-500/30 border-t border-amber-300/40 animate-pulse transition-transform group-hover:scale-105 active:scale-90">
                 <ShoppingCart size={18} strokeWidth={2.4} />
                 {totalCount > 0 && (
                   <span className="absolute -top-1 -right-1 px-1 min-w-[16px] h-[16px] rounded-full bg-rose-600 text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-white dark:ring-zinc-900 leading-none">
@@ -100,19 +108,22 @@ export function BottomNav({
             <button
               type="button"
               onClick={() => {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(12);
+                }
                 if (onStartOrder) {
                   onStartOrder();
                 } else {
                   router.push(`/flat/${flatId}?order=true`);
                 }
               }}
-              className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all active:scale-95 cursor-pointer group"
+              className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group touch-manipulation select-none active:scale-95"
               title="I'm Ordering Now"
             >
-              <div className="w-9 h-9 rounded-full bg-amber-500/15 dark:bg-amber-500/20 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-white dark:hover:text-white flex items-center justify-center transition-all group-hover:scale-105">
+              <div className="w-9 h-9 rounded-full bg-amber-500/15 dark:bg-amber-500/20 hover:bg-amber-500 text-amber-600 dark:text-amber-400 hover:text-white dark:hover:text-white flex items-center justify-center transition-all group-hover:scale-105 active:scale-90 border border-amber-500/20">
                 <ShoppingCart size={18} strokeWidth={2.2} />
               </div>
-              <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 tracking-tight leading-none mt-0.5">
+              <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 tracking-tight leading-none mt-0.5">
                 Order
               </span>
             </button>

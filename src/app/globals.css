@@ -13,8 +13,19 @@
   * {
     box-sizing: border-box;
   }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     transition: background-color 0.2s, color 0.2s;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button, a, [role="button"], input[type='button'], input[type='submit'] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
   }
   input[type='number']::-webkit-inner-spin-button,
   input[type='number']::-webkit-outer-spin-button {

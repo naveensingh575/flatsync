@@ -21,10 +21,10 @@ export function CategoryFilter({ selected, onChange }: CategoryFilterProps) {
             key={cat.value}
             onClick={() => onChange(cat.value)}
             className={cn(
-              'relative flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 flex-shrink-0 cursor-pointer active:scale-95',
+              'relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 flex-shrink-0 cursor-pointer select-none touch-manipulation active:scale-95 active:translate-y-0.5',
               isSelected
-                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm font-bold'
-                : 'bg-white dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-zinc-200/80 dark:border-zinc-800/80'
+                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-md font-bold border-t border-zinc-700/40 dark:border-zinc-200'
+                : 'bg-white dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-zinc-250 dark:border-zinc-750 active:bg-zinc-100 dark:active:bg-zinc-800'
             )}
           >
             <span className="text-sm leading-none">{cat.emoji}</span>

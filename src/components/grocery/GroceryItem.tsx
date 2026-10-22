@@ -105,71 +105,79 @@ export function GroceryItemCard({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, x: -80, scale: 0.95 }}
-        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+        transition={{ type: 'spring', stiffness: 240, damping: 28 }}
         className={cn(
-          'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-all duration-200 shadow-xs hover:shadow-sm',
+          'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-all duration-150 shadow-xs hover:shadow-sm',
           item.status === 'in_cart'
-            ? 'bg-emerald-50/30 dark:bg-emerald-950/15 border-emerald-200/60 dark:border-emerald-800/40 opacity-90'
-            : 'bg-white dark:bg-zinc-900 border-zinc-200/70 dark:border-zinc-800/80',
-          isOrderingMode && 'cursor-pointer active:scale-[0.98]'
+            ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/70 dark:border-emerald-800/50 opacity-95'
+            : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800/80',
+          isOrderingMode && 'cursor-pointer'
         )}
         onClick={handleTap}
       >
-        {/* Ordering mode checkbox */}
-        {isOrderingMode && (
-          <div className="flex-shrink-0 mt-0.5">
-            <motion.div
-              animate={{
-                scale: item.status === 'in_cart' ? 1 : 0.9,
-                backgroundColor: item.status === 'in_cart' ? '#10b981' : 'transparent',
-              }}
-              className={cn(
-                'w-6 h-6 rounded-full border-2 flex items-center justify-center',
-                item.status === 'in_cart' ? 'border-emerald-500' : 'border-zinc-300 dark:border-zinc-600'
-              )}
-            >
-              {item.status === 'in_cart' && (
-                <CheckCircle2 size={14} className="text-white" />
-              )}
-            </motion.div>
-          </div>
-        )}
+        {/* Checkbox / In-Cart Toggle Circle (Always visible, solid touch target) */}
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate(15);
+            }
+            onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
+          }}
+          className={cn(
+            'flex-shrink-0 mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 cursor-pointer select-none active:scale-90 touch-manipulation',
+            item.status === 'in_cart'
+              ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+              : 'border-zinc-300 dark:border-zinc-600 hover:border-emerald-400 bg-zinc-50 dark:bg-zinc-800/60'
+          )}
+          title={item.status === 'in_cart' ? 'Mark as Pending' : 'Mark as In Cart'}
+        >
+          {item.status === 'in_cart' && (
+            <CheckCircle2 size={16} className="text-white fill-emerald-500" strokeWidth={2.5} />
+          )}
+        </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <p className={cn(
-                'font-semibold text-sm text-zinc-900 dark:text-white',
+                'font-semibold text-sm text-zinc-900 dark:text-white leading-snug',
                 item.status === 'in_cart' && 'line-through text-zinc-400 dark:text-zinc-500'
               )}>
                 {item.item_name}
               </p>
               {item.quantity && (
-                <p className="text-xs text-zinc-400 mt-0.5">{item.quantity}</p>
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-0.5">{item.quantity}</p>
               )}
               {cleanNoteText && (
                 <p className="text-xs text-zinc-400 mt-0.5 italic">{cleanNoteText}</p>
               )}
             </div>
 
-            {/* Edit and Delete buttons */}
+            {/* Edit and Delete buttons (with onPointerDown stopPropagation so drag never intercepts) */}
             {!isOrderingMode && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 {onEdit && (
                   <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-                    className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                    className="w-8 h-8 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center transition-colors cursor-pointer select-none active:scale-90 touch-manipulation"
                     title="Edit item"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={15} />
                   </button>
                 )}
                 <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-300 dark:text-zinc-600 hover:text-red-400 transition-colors"
+                  className="w-8 h-8 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 text-zinc-300 dark:text-zinc-600 hover:text-red-500 flex items-center justify-center transition-colors cursor-pointer select-none active:scale-90 touch-manipulation"
                   title="Remove item"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={15} />
                 </button>
               </div>
             )}
@@ -179,7 +187,7 @@ export function GroceryItemCard({
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {/* Category badge */}
             <span className={cn(
-              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+              'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium',
               CATEGORY_COLORS[item.category]
             )}>
               {catMeta?.emoji} {catMeta?.label}
@@ -206,16 +214,17 @@ export function GroceryItemCard({
                 {onUpdateItem && (
                   <button
                     type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       const cleanNote = (item.note || '').replace(/\[OOS[^\]]*\]/g, '').trim();
                       onUpdateItem(item.id, { note: cleanNote || null });
                       toast.success(`Removed OOS tag from ${item.item_name}`);
                     }}
-                    className="p-0.5 rounded-full hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+                    className="p-1 rounded-full hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 transition-colors cursor-pointer select-none touch-manipulation"
                     title="Remove Out of Stock tag"
                   >
-                    <X size={11} strokeWidth={2.8} />
+                    <X size={12} strokeWidth={2.8} />
                   </button>
                 )}
               </span>
@@ -224,19 +233,23 @@ export function GroceryItemCard({
             {/* Status / In Cart Toggle Button */}
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(15);
+                }
                 onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
               }}
               className={cn(
-                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-transform active:scale-95',
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer select-none transition-transform active:scale-95 touch-manipulation shadow-2xs',
                 item.status === 'in_cart'
-                  ? statusMeta.color
-                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700'
               )}
               title={item.status === 'in_cart' ? 'Tap to mark as Pending' : 'Tap to mark as In Cart'}
             >
-              <ShoppingCart size={10} />
+              <ShoppingCart size={11} />
               <span>{item.status === 'in_cart' ? 'In Cart ✅' : 'Pending'}</span>
             </button>
 

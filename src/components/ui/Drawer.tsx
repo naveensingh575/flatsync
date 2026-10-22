@@ -40,7 +40,7 @@ export function Drawer({ open, onClose, title, children, className }: DrawerProp
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            transition={{ type: 'spring', damping: 32, stiffness: 240, mass: 0.95 }}
             className={cn(
               'fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900',
               'rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col',
@@ -54,10 +54,11 @@ export function Drawer({ open, onClose, title, children, className }: DrawerProp
             {/* Header */}
             {title && (
               <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-100 dark:border-zinc-800">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
+                <h2 className="text-lg font-bold text-zinc-900 dark:text-white">{title}</h2>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700 transition-colors cursor-pointer select-none touch-manipulation active:scale-95"
+                  title="Close"
                 >
                   <X size={18} className="text-zinc-500" />
                 </button>

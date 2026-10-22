@@ -72,10 +72,10 @@ export function InlineQuickAdd({ onAdd, onOpenDrawer }: InlineQuickAddProps) {
             type="button"
             onClick={isListening ? stopListening : startListening}
             className={cn(
-              'p-2 rounded-xl transition-all flex items-center justify-center flex-shrink-0 cursor-pointer',
+              'p-2 rounded-xl transition-all flex items-center justify-center flex-shrink-0 cursor-pointer select-none touch-manipulation active:scale-90',
               isListening
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-zinc-800'
+                ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
+                : 'text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-zinc-800 active:bg-emerald-100 dark:active:bg-zinc-700'
             )}
             title={isListening ? 'Stop listening' : 'Voice add (e.g. "2 packets milk urgent")'}
           >
@@ -102,7 +102,7 @@ export function InlineQuickAdd({ onAdd, onOpenDrawer }: InlineQuickAddProps) {
             <button
               type="submit"
               disabled={submitting}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-transform flex items-center gap-1 cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 active:scale-[0.98] active:translate-y-0.5 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/25 border-t border-emerald-400/30 transition-all flex items-center gap-1 cursor-pointer select-none touch-manipulation"
             >
               <Plus size={14} strokeWidth={3} />
               <span>Add</span>
@@ -111,7 +111,7 @@ export function InlineQuickAdd({ onAdd, onOpenDrawer }: InlineQuickAddProps) {
             <button
               type="button"
               onClick={onOpenDrawer}
-              className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 rounded-xl transition-colors cursor-pointer"
+              className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 active:bg-zinc-200 dark:active:bg-zinc-700 rounded-xl transition-colors cursor-pointer select-none touch-manipulation active:scale-90"
               title="More options / Bulk Paste / Category"
             >
               <SlidersHorizontal size={15} />
