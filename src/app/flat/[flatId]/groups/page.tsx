@@ -3,6 +3,7 @@
 import { useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFlat } from '@/hooks/useFlat';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useAppStore } from '@/store/useAppStore';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { ArrowLeft, Check, Plus, Settings } from 'lucide-react';
@@ -15,6 +16,7 @@ export default function GroupsSwitchPage() {
   const flatId = (routeParams?.flatId as string) || '';
   const { flat } = useFlat(flatId);
   const { userGroups, setUserGroups, setCurrentGroupId } = useAppStore();
+  const { isOnline } = useNetworkStatus();
 
   // Multi-tier fallback for userGroups
   const displayGroups = useMemo<Flat[]>(() => {
@@ -67,6 +69,19 @@ export default function GroupsSwitchPage() {
       </header>
 
       <main className="max-w-lg mx-auto p-4 space-y-4">
+        {/* Offline Notification Banner */}
+        {!isOnline && (
+          <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs shadow-xs animate-in fade-in">
+            <span className="text-xl flex-shrink-0">📴</span>
+            <div>
+              <p className="font-bold">You are offline</p>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Showing your saved groups.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Simple Group Switch List */}
         <div className="space-y-1">
           <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-1 mb-2">
