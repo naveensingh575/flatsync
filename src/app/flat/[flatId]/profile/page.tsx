@@ -25,6 +25,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useFlat } from '@/hooks/useFlat';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { createClient } from '@/lib/supabase/client';
 import { BottomNav } from '@/components/layout/BottomNav';
 import {
@@ -45,6 +46,7 @@ export default function ProfilePage() {
   const routeParams = useParams();
   const routeFlatId = (routeParams?.flatId as string) || '';
   const { profile, userGroups, currentGroupId } = useAppStore();
+  const { isOnline } = useNetworkStatus();
   const flatId = (routeFlatId && routeFlatId !== 'current' && routeFlatId !== 'list')
     ? routeFlatId
     : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
@@ -58,8 +60,7 @@ export default function ProfilePage() {
 
   const { signOut } = useAuth();
   const { flat } = useFlat(flatId);
-  const isConnected = true;
-  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const isConnected = isOnline;
   const supabase = createClient();
 
   const [userEmail, setUserEmail] = useState<string>('');
@@ -302,10 +303,17 @@ export default function ProfilePage() {
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white truncate">
                   {profile?.name || 'User'}
                 </h3>
-                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live
-                </span>
+                {isOnline ? (
+                  <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                    Offline
+                  </span>
+                )}
               </div>
               <p className="text-xs text-zinc-400 truncate mt-0.5">{userEmail || 'Member'}</p>
             </div>

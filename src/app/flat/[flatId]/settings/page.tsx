@@ -100,21 +100,32 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-3">
-            {displayGroups.map((g) => (
-              <GroupCard
-                key={g.id}
-                group={g}
-                members={groupMembersMap[g.id] || []}
-                isActive={g.id === flatId}
-                onSelectGroup={(id) => {
-                  setCurrentGroupId(id);
-                  router.push('/list');
-                }}
-                onLeaveGroup={handleLeaveGroup}
-                onDeleteGroup={handleDeleteGroup}
-                onMakeAdmin={(userId) => makeAdmin(g.id, userId)}
-              />
-            ))}
+            {displayGroups.map((g) => {
+              const members = groupMembersMap[g.id] || [];
+              const userIsAdmin = Boolean(
+                isAdmin(g.id) ||
+                g.created_by === profile?.id ||
+                members.length <= 1 ||
+                members.some((m) => m.id === profile?.id && m.role === 'admin')
+              );
+
+              return (
+                <GroupCard
+                  key={g.id}
+                  group={g}
+                  members={members}
+                  isActive={g.id === flatId}
+                  isAdmin={userIsAdmin}
+                  onSelectGroup={(id) => {
+                    setCurrentGroupId(id);
+                    router.push('/list');
+                  }}
+                  onLeaveGroup={handleLeaveGroup}
+                  onDeleteGroup={handleDeleteGroup}
+                  onMakeAdmin={(userId) => makeAdmin(g.id, userId)}
+                />
+              );
+            })}
 
             {displayGroups.length === 0 && (
               <div className="p-8 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-400">

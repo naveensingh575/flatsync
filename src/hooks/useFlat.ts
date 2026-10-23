@@ -223,6 +223,7 @@ export function useFlat(flatId?: string) {
 
     // Check role in groupMembersMap
     const membersList = groupMembersMap[gid] || members;
+    if (membersList.length <= 1 && membersList.some((m) => m.id === profile.id)) return true;
     const self = membersList.find((m) => m.id === profile.id);
     return self?.role === 'admin';
   }

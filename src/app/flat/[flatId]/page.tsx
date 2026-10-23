@@ -101,6 +101,7 @@ export default function DashboardPage() {
     updateStatus,
     batchUpdateStatus,
     deleteItem,
+    refetch,
   } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
 
@@ -366,6 +367,8 @@ export default function DashboardPage() {
         <GroceryList
           items={processedItems}
           loading={loading}
+          isOnline={isOnline}
+          onRetry={refetch}
           isOrderingMode={iAmOrdering}
           onUpdateStatus={async (id, status) => {
             await updateStatus(id, status);
@@ -413,9 +416,8 @@ export default function DashboardPage() {
         onStartOrder={async (platform) => {
           await startOrdering(platform);
           toast.success(`You're now ordering on ${platform}! Group notified 🔔`);
-          openQuickCommerceApp(platform);
           setIsOrderDrawerOpen(false);
-          setIsChecklistOpen(false);
+          setIsChecklistOpen(true);
         }}
       />
 

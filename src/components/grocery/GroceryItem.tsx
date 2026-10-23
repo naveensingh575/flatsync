@@ -208,29 +208,21 @@ export function GroceryItemCard({
         )}
         onClick={handleTap}
       >
-        {/* Checkbox / In-Cart Toggle Circle (Always visible, solid touch target) */}
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (typeof navigator !== 'undefined' && navigator.vibrate) {
-              navigator.vibrate(15);
-            }
-            onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
-          }}
+        {/* Category & Status Indicator (Visual cue; status change is done via smooth slide or checklist) */}
+        <div
           className={cn(
-            'flex-shrink-0 mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 cursor-pointer select-none active:scale-90 touch-manipulation',
+            'flex-shrink-0 mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 select-none pointer-events-none',
             item.status === 'in_cart'
               ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/30'
-              : 'border-zinc-300 dark:border-zinc-600 hover:border-emerald-400 bg-zinc-50 dark:bg-zinc-800/60'
+              : 'border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/60'
           )}
-          title={item.status === 'in_cart' ? 'Mark as Pending' : 'Mark as In Cart'}
         >
-          {item.status === 'in_cart' && (
+          {item.status === 'in_cart' ? (
             <CheckCircle2 size={16} className="text-white fill-emerald-500" strokeWidth={2.5} />
+          ) : (
+            <span className="text-xs">{catMeta?.emoji || '🛒'}</span>
           )}
-        </button>
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">

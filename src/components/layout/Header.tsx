@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Flat } from '@/types/app.types';
 
 interface HeaderProps {
@@ -12,7 +13,9 @@ interface HeaderProps {
   isOnline?: boolean;
 }
 
-export function Header({ flat, isConnected = true, isOnline = true }: HeaderProps) {
+export function Header({ flat, isConnected = true, isOnline: propIsOnline }: HeaderProps) {
+  const { isOnline: netIsOnline } = useNetworkStatus();
+  const isOnline = propIsOnline !== undefined ? propIsOnline : netIsOnline;
   const routeParams = useParams();
   const routeFlatId = (routeParams?.flatId as string) || '';
   const { profile, currentGroupId, userGroups } = useAppStore();

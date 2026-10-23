@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const ADMIN_FEEDBACK_EMAIL = 'navisingh210@gmail.com';
+const PRIMARY_FEEDBACK_EMAIL = 'naveenofficial210@gmail.com';
+const CC_FEEDBACK_EMAIL = 'navisingh210@gmail.com';
 const BREVO_VERIFIED_SENDER = 'naveenofficial210@gmail.com';
 
 export async function POST(request: NextRequest) {
@@ -17,9 +18,9 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get('host') || 'grocerysync.vercel.app';
     const origin = host.includes('localhost') ? 'http://localhost:3000' : `https://${host}`;
 
-    // 1. Try sending email to navisingh210@gmail.com via FormSubmit AJAX service
+    // 1. Send email to primary recipient via FormSubmit AJAX service with CC
     try {
-      await fetch(`https://formsubmit.co/ajax/${ADMIN_FEEDBACK_EMAIL}`, {
+      await fetch(`https://formsubmit.co/ajax/${PRIMARY_FEEDBACK_EMAIL}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
           _subject: `[GrocerySync Feedback] ${category.toUpperCase()} from ${userName || 'User'}`,
           _captcha: 'false',
           _template: 'table',
+          _cc: CC_FEEDBACK_EMAIL,
           'User Name': userName || 'Anonymous',
           'User Email': userEmail || 'Not provided',
           'Category': category,
@@ -55,7 +57,10 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             sender: { name: 'GrocerySync', email: BREVO_VERIFIED_SENDER },
-            to: [{ email: ADMIN_FEEDBACK_EMAIL, name: 'Admin' }],
+            to: [
+              { email: PRIMARY_FEEDBACK_EMAIL, name: 'Admin' },
+              { email: CC_FEEDBACK_EMAIL, name: 'Backup' },
+            ],
             subject: `[GrocerySync Feedback] ${category.toUpperCase()} from ${userName || 'User'}`,
             htmlContent: `
               <h2>New GrocerySync Feedback</h2>
@@ -83,7 +88,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             from: 'GrocerySync Feedback <onboarding@resend.dev>',
-            to: [ADMIN_FEEDBACK_EMAIL],
+            to: [PRIMARY_FEEDBACK_EMAIL, CC_FEEDBACK_EMAIL],
             subject: `[GrocerySync Feedback] ${category.toUpperCase()} from ${userName || 'User'}`,
             html: `
               <h2>New GrocerySync Feedback</h2>

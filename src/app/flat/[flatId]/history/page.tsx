@@ -7,9 +7,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, ChevronDown, Package } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
 import { useGroceryList } from '@/hooks/useGroceryList';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useAppStore } from '@/store/useAppStore';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { OfflineState } from '@/components/ui/OfflineState';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { ITEM_CATEGORIES, PLATFORMS } from '@/lib/constants';
@@ -32,7 +34,8 @@ export default function HistoryPage() {
     }
   }, []);
 
-  const { orders, purchasedItems, loading } = useHistory(flatId);
+  const { isOnline } = useNetworkStatus();
+  const { orders, purchasedItems, loading, refetch } = useHistory(flatId);
   const { addItem, addBatchItems } = useGroceryList(flatId);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -79,10 +82,18 @@ export default function HistoryPage() {
         </div>
 
         {orders.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <Package size={40} className="text-zinc-300 dark:text-zinc-700" />
-            <p className="text-zinc-400 dark:text-zinc-500">No orders yet</p>
-          </div>
+          !isOnline ? (
+            <OfflineState
+              title="You are Currently Offline"
+              message="GrocerySync couldn't load past orders. Check your internet connection and try again."
+              onRetry={refetch}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <Package size={40} className="text-zinc-300 dark:text-zinc-700" />
+              <p className="text-zinc-400 dark:text-zinc-500">No orders yet</p>
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             {orders.map((order) => {

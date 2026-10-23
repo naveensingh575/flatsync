@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ShoppingBag, Sparkles, Plus } from 'lucide-react';
 import { GroceryItem as GroceryItemType, ItemStatus, AddItemPayload } from '@/types/app.types';
 import { GroceryItemCard } from './GroceryItem';
+import { OfflineState } from '@/components/ui/OfflineState';
 
 const STARTER_STAPLES: AddItemPayload[] = [
   { item_name: 'Amul Taaza Milk', category: 'dairy', quantity: '500ml', is_urgent: false, note: null, for_user: null },
@@ -17,6 +18,8 @@ interface GroceryListProps {
   items: GroceryItemType[];
   loading: boolean;
   isOrderingMode: boolean;
+  isOnline?: boolean;
+  onRetry?: () => Promise<void> | void;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (item: GroceryItemType) => void;
@@ -28,6 +31,8 @@ export function GroceryList({
   items,
   loading,
   isOrderingMode,
+  isOnline = true,
+  onRetry,
   onUpdateStatus,
   onDelete,
   onEdit,
@@ -48,6 +53,10 @@ export function GroceryList({
   }
 
   if (items.length === 0) {
+    if (!isOnline) {
+      return <OfflineState onRetry={onRetry} />;
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}

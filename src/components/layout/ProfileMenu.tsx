@@ -40,6 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import { openExternalSafely } from '@/lib/quickCommerce';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import toast from 'react-hot-toast';
 
 interface ProfileMenuProps {
@@ -48,7 +49,9 @@ interface ProfileMenuProps {
   isOnline?: boolean;
 }
 
-export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: ProfileMenuProps) {
+export function ProfileMenu({ flatId, isConnected = true, isOnline: propIsOnline }: ProfileMenuProps) {
+  const { isOnline: netIsOnline } = useNetworkStatus();
+  const isOnline = propIsOnline !== undefined ? propIsOnline : netIsOnline;
   const router = useRouter();
   const { profile, userGroups } = useAppStore();
   const { signOut } = useAuth();
@@ -342,10 +345,10 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
             className={cn(
               'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-950',
               !isOnline
-                ? 'bg-amber-500 animate-pulse'
+                ? 'bg-zinc-400'
                 : isConnected
                 ? 'bg-emerald-500'
-                : 'bg-amber-400'
+                : 'bg-amber-400 animate-pulse'
             )}
             title={!isOnline ? 'Offline' : isConnected ? 'Live Real-Time' : 'Reconnecting'}
           />
@@ -371,10 +374,17 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     <h3 className="font-bold text-sm text-zinc-900 dark:text-white truncate">
                       {profile.name}
                     </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60 flex items-center gap-1 flex-shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Live
-                    </span>
+                    {isOnline ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60 flex items-center gap-1 flex-shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 flex items-center gap-1 flex-shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                        Offline
+                      </span>
+                    )}
                   </div>
                   {userEmail ? (
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
