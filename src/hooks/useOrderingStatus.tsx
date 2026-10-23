@@ -59,16 +59,19 @@ export function useOrderingStatus(inputFlatId?: string) {
       const s = (data as OrderingSession) ?? null;
 
       // Auto-expire sessions older than 10 minutes without showing counter
-      if (s && s.started_at) {
-        const elapsed = Date.now() - new Date(s.started_at).getTime();
-        if (elapsed >= TEN_MINUTES_MS) {
-          await supabase
-            .from('ordering_sessions')
-            .update({ is_active: false, ended_at: new Date().toISOString() })
-            .eq('id', s.id);
-          setSession(null);
-          setActiveSession(null);
-          return;
+      if (s) {
+        const startTime = s.started_at || (s as any).created_at;
+        if (startTime) {
+          const elapsed = Date.now() - new Date(startTime).getTime();
+          if (elapsed >= TEN_MINUTES_MS) {
+            await supabase
+              .from('ordering_sessions')
+              .update({ is_active: false, ended_at: new Date().toISOString() })
+              .eq('id', s.id);
+            setSession(null);
+            setActiveSession(null);
+            return;
+          }
         }
       }
 
@@ -125,7 +128,7 @@ export function useOrderingStatus(inputFlatId?: string) {
     } catch (e) {
       console.error('Error fetching session:', e);
     }
-  }, [flatId, profile?.id, setActiveSession, setIsAddItemOpen]);
+  }, [flatId, profile?.id, setActiveSession, setIsAddItemOpen, supabase]);
 
   useEffect(() => {
     if (!flatId) return;
@@ -148,13 +151,15 @@ export function useOrderingStatus(inputFlatId?: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [flatId, fetchSession]);
+  }, [flatId, fetchSession, supabase]);
 
   // Auto-disappear ordering session after 10 minutes without showing counter
   useEffect(() => {
-    if (!session?.started_at || !session.is_active) return;
+    if (!session?.is_active) return;
+    const startTime = session.started_at || (session as any).created_at;
+    if (!startTime) return;
 
-    const elapsed = Date.now() - new Date(session.started_at).getTime();
+    const elapsed = Date.now() - new Date(startTime).getTime();
     const remaining = TEN_MINUTES_MS - elapsed;
 
     if (remaining <= 0) {
@@ -178,7 +183,24 @@ export function useOrderingStatus(inputFlatId?: string) {
         .then(() => {});
     }, remaining);
 
-    return () => clearTimeout(timer);
+    // Periodic check every 10s for background tab recovery
+    const interval = setInterval(() => {
+      const curElapsed = Date.now() - new Date(startTime).getTime();
+      if (curElapsed >= TEN_MINUTES_MS) {
+        setSession(null);
+        setActiveSession(null);
+        supabase
+          .from('ordering_sessions')
+          .update({ is_active: false, ended_at: new Date().toISOString() })
+          .eq('id', session.id)
+          .then(() => {});
+      }
+    }, 10000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [session?.id, session?.started_at, session?.is_active, supabase, setActiveSession]);
 
   async function startOrdering(platform: Platform) {
@@ -195,22 +217,24 @@ export function useOrderingStatus(inputFlatId?: string) {
       buyer_id: profile.id,
       platform,
       is_active: true,
+      started_at: new Date().toISOString(),
     });
 
     sendOrderingAlertNotification(profile.name || 'Someone', platform, flatId, profile.id);
   }
 
-  async function endOrdering(totalAmount?: number) {
+  async function endOrdering(totalAmount?: number, finalPlatform?: Platform) {
     if (!session) return;
+    const storePlatform = finalPlatform || session.platform || 'other';
 
-    // Create order record
+    // Create order record with the chosen platform!
     const { data: order } = await supabase
       .from('orders')
       .insert({
         group_id: flatId,
         buyer_id: session.buyer_id,
         session_id: session.id,
-        platform: session.platform,
+        platform: storePlatform,
         total_amount: totalAmount ?? null,
       })
       .select()
@@ -230,6 +254,9 @@ export function useOrderingStatus(inputFlatId?: string) {
       .from('ordering_sessions')
       .update({ is_active: false, ended_at: new Date().toISOString() })
       .eq('id', session.id);
+
+    setSession(null);
+    setActiveSession(null);
   }
 
   return { session, startOrdering, endOrdering };

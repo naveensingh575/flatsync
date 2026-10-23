@@ -29,12 +29,13 @@ export function OrderingBanner({
 
   // Auto-disappear after 10 minutes without showing any counter
   useEffect(() => {
-    if (!session?.started_at) {
+    const startTime = session?.started_at || (session as any)?.created_at;
+    if (!startTime) {
       setIsExpired(false);
       return;
     }
 
-    const elapsed = Date.now() - new Date(session.started_at).getTime();
+    const elapsed = Date.now() - new Date(startTime).getTime();
     const remaining = TEN_MINUTES_MS - elapsed;
 
     if (remaining <= 0) {
@@ -47,8 +48,18 @@ export function OrderingBanner({
       setIsExpired(true);
     }, remaining);
 
-    return () => clearTimeout(timer);
-  }, [session?.started_at, session?.id]);
+    const interval = setInterval(() => {
+      const curElapsed = Date.now() - new Date(startTime).getTime();
+      if (curElapsed >= TEN_MINUTES_MS) {
+        setIsExpired(true);
+      }
+    }, 10000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [session?.started_at, (session as any)?.created_at, session?.id]);
 
   if (!session || isExpired) {
     return null;

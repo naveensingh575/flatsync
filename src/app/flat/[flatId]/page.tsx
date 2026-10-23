@@ -17,7 +17,7 @@ import { OrderingBanner } from '@/components/ordering/OrderingBanner';
 import { StartOrderDrawer } from '@/components/ordering/StartOrderDrawer';
 import { OrderChecklistView } from '@/components/ordering/OrderChecklistView';
 import { Button } from '@/components/ui/Button';
-import { GroceryItem } from '@/types/app.types';
+import { GroceryItem, Platform } from '@/types/app.types';
 import { findDuplicatePairs, mergeQuantities } from '@/lib/itemMatcher';
 import { openQuickCommerceApp } from '@/lib/quickCommerce';
 import { createClient } from '@/lib/supabase/client';
@@ -198,8 +198,8 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleEndOrder(total?: number) {
-    await endOrdering(total);
+  async function handleEndOrder(total?: number, chosenPlatform?: Platform) {
+    await endOrdering(total, chosenPlatform);
     toast.success('Order placed! Items moved to history');
   }
 
@@ -442,6 +442,9 @@ export default function DashboardPage() {
         onClose={() => setIsChecklistOpen(false)}
         items={items}
         platform={session?.platform}
+        buyerId={session?.buyer_id}
+        buyerName={session?.buyer?.name}
+        isCurrentBuyer={!session || session?.buyer_id === profile?.id}
         onUpdateStatus={updateStatus}
         onUpdateItem={updateItem}
         onEndOrder={handleEndOrder}

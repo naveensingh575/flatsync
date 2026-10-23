@@ -19,9 +19,12 @@ interface OrderChecklistViewProps {
   onClose: () => void;
   items: GroceryItem[];
   platform?: Platform;
+  buyerId?: string;
+  buyerName?: string;
+  isCurrentBuyer?: boolean;
   onUpdateStatus: (id: string, status: ItemStatus) => void;
   onUpdateItem?: (id: string, updates: Partial<AddItemPayload>) => Promise<void>;
-  onEndOrder: (total?: number) => Promise<void>;
+  onEndOrder: (total?: number, platform?: Platform) => Promise<void>;
 }
 
 export function OrderChecklistView({
@@ -29,6 +32,9 @@ export function OrderChecklistView({
   onClose,
   items,
   platform,
+  buyerId,
+  buyerName,
+  isCurrentBuyer = true,
   onUpdateStatus,
   onUpdateItem,
   onEndOrder,
@@ -95,6 +101,11 @@ export function OrderChecklistView({
   }
 
   async function handleEnd() {
+    if (!isCurrentBuyer) {
+      toast.error(`Only ${buyerName || 'the buyer'} who started this order can mark it as placed.`);
+      return;
+    }
+
     setEnding(true);
 
     // Annotate rolled-over Out-of-Stock items so they persist on list
@@ -109,7 +120,7 @@ export function OrderChecklistView({
       }
     }
 
-    await onEndOrder(totalAmount ? parseFloat(totalAmount) : undefined);
+    await onEndOrder(totalAmount ? parseFloat(totalAmount) : undefined, activePlatform);
     if (oosItemIds.size > 0) {
       toast.success(`${oosItemIds.size} out-of-stock items rolled over to list 🔁`);
     }
@@ -362,27 +373,39 @@ export function OrderChecklistView({
           </AnimatePresence>
         </div>
 
-        {/* Order total */}
-        <div className="space-y-1">
-          <Input
-            label="Total Amount (optional)"
-            type="number"
-            placeholder="e.g. 845"
-            value={totalAmount}
-            onChange={(e) => setTotalAmount(e.target.value)}
-          />
-        </div>
+        {/* Order total (Editable by buyer) */}
+        {isCurrentBuyer && (
+          <div className="space-y-1">
+            <Input
+              label="Total Amount (optional)"
+              type="number"
+              placeholder="e.g. 845"
+              value={totalAmount}
+              onChange={(e) => setTotalAmount(e.target.value)}
+            />
+          </div>
+        )}
 
-        <Button
-          className="w-full"
-          size="lg"
-          onClick={handleEnd}
-          loading={ending}
-          disabled={inCartCount === 0}
-        >
-          <Package size={18} />
-          Mark Order as Placed ({inCartCount} items)
-        </Button>
+        <div className="space-y-1.5 pt-1">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleEnd}
+            loading={ending}
+            disabled={inCartCount === 0 || !isCurrentBuyer}
+          >
+            <Package size={18} />
+            {isCurrentBuyer
+              ? `Mark Order as Placed (${inCartCount} items)`
+              : `Ordering by ${buyerName || 'Member'} (${inCartCount} in cart)`}
+          </Button>
+
+          {!isCurrentBuyer && (
+            <p className="text-[11px] text-center text-amber-600 dark:text-amber-400 font-medium">
+              🔒 Only {buyerName || 'the member'} who started this order can mark it as placed.
+            </p>
+          )}
+        </div>
       </div>
     </Drawer>
   );
