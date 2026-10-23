@@ -14,7 +14,7 @@ try {
 
 export async function POST(request: NextRequest) {
   try {
-    const { flatId, senderId, title, body, url = '/', tag = 'flatsync-alert' } = await request.json();
+    const { flatId, senderId, title, body, url = '/', tag = 'grocerysync-alert' } = await request.json();
 
     if (!flatId || !title) {
       return NextResponse.json({ error: 'Missing flatId or title' }, { status: 400 });
