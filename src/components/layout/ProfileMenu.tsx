@@ -248,7 +248,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
 
   // Refer / Share GrocerySync helpers
   function getReferralUrl() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
     const codeQuery = activeGroup?.join_code ? `?code=${activeGroup.join_code}` : '';
     return `${siteUrl}/register${codeQuery}`;
@@ -665,7 +665,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
               )}
             </AnimatePresence>
 
-            {/* Refer FlatSync Modal */}
+            {/* Refer GrocerySync Modal */}
             <AnimatePresence>
               {showReferModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">

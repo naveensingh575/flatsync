@@ -177,7 +177,7 @@ export default function ProfilePage() {
   }
 
   function getReferralUrl() {
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
     const codeQuery = activeGroup?.join_code ? `?code=${activeGroup.join_code}` : '';
     return `${siteUrl}/register${codeQuery}`;

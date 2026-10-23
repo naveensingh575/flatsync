@@ -158,7 +158,7 @@ export function useAuth() {
     const cleanEmail = email.trim().toLowerCase();
 
     // Determine production callback URL dynamically
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
     const emailRedirectTo = `${siteUrl}/auth/callback?next=/login`;
 
     const { data, error } = await supabase.auth.signUp({

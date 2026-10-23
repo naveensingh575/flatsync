@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Feedback message cannot be empty' }, { status: 400 });
     }
 
-    const host = request.headers.get('host') || 'flatsync-psi.vercel.app';
+    const host = request.headers.get('host') || 'grocerysync.vercel.app';
     const origin = host.includes('localhost') ? 'http://localhost:3000' : `https://${host}`;
 
     // 1. Try sending email to navisingh210@gmail.com via FormSubmit AJAX service

@@ -143,7 +143,7 @@ export default function DashboardPage() {
                   Get Home Screen & Lockscreen Alerts
                 </p>
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
-                  Popups when flatmates order or add items even if FlatSync is closed.
+                  Popups when group members order or add items even if GrocerySync is closed.
                 </p>
               </div>
             </div>

@@ -104,7 +104,7 @@ function ForgotPasswordContent() {
       }
 
       // 2. Determine exact project URL (never localhost in production)
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
       const redirectTo = `${siteUrl}/auth/callback?type=recovery&next=/forgot-password?mode=reset`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
@@ -129,7 +129,7 @@ function ForgotPasswordContent() {
     if (countdown > 0) return;
     setResending(true);
     try {
-      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://flatsync-psi.vercel.app';
+      const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
       const redirectTo = `${siteUrl}/auth/callback?type=recovery&next=/forgot-password?mode=reset`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
