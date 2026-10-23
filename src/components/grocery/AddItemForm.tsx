@@ -114,6 +114,7 @@ export function AddItemForm({
       item_name: resolvedName,
       category: (parsed.category && parsed.category !== 'other') ? parsed.category : prev.category,
       quantity: parsed.quantity || prev.quantity,
+      note: parsed.note || prev.note,
       is_urgent: parsed.is_urgent !== undefined ? parsed.is_urgent : prev.is_urgent,
       for_user: parsed.for_user || prev.for_user,
     }));
@@ -121,6 +122,7 @@ export function AddItemForm({
     const tags: string[] = [];
     if (parsed.quantity) tags.push(`Qty: ${parsed.quantity}`);
     if (parsed.category && parsed.category !== 'other') tags.push(`Cat: ${parsed.category}`);
+    if (parsed.note) tags.push(`Note: ${parsed.note}`);
     if (parsed.is_urgent) tags.push('Urgent');
     if (parsed.for_user) tags.push(`For: ${parsed.for_user}`);
 

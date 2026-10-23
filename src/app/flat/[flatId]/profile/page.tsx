@@ -37,6 +37,7 @@ import {
 } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
+import { openExternalSafely } from '@/lib/quickCommerce';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
@@ -199,13 +200,15 @@ export default function ProfilePage() {
     const activeGroup = userGroups.find((g) => g.id === flatId) || userGroups[0];
     const groupText = activeGroup?.name ? ` to join "${activeGroup.name}"` : '';
     const message = `🛒 GrocerySync makes shared grocery runs so easy! Create your account${groupText} and add items together with live Blinkit & Zepto alerts:\n\n👉 ${regUrl}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    openExternalSafely(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`);
+    setShowReferModal(false);
   }
 
   function handleCopyReferralLink() {
     const regUrl = getReferralUrl();
     navigator.clipboard.writeText(regUrl);
     toast.success('Referral link copied to clipboard! 📋');
+    setShowReferModal(false);
   }
 
   async function handleNativeReferralShare() {
@@ -218,6 +221,7 @@ export default function ProfilePage() {
           text: message,
           url: regUrl,
         });
+        setShowReferModal(false);
       } catch {}
     } else {
       handleCopyReferralLink();

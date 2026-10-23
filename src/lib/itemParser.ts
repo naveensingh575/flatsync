@@ -50,6 +50,32 @@ const CATEGORY_KEYWORDS: Record<ItemCategory, string[]> = {
  *   is_urgent: true
  *   for_user: "Rahul"
  */
+const EXPLICIT_CATEGORY_MAP: Record<ItemCategory, string[]> = {
+  dairy: ['dairy', 'milk', 'doodh'],
+  veggies: ['veggies', 'vegetables?', 'sabzi', 'veggie'],
+  fruits: ['fruits?', 'phal'],
+  snacks: ['snacks?', 'munchies'],
+  beverages: ['beverages?', 'drinks?', 'cold drinks?'],
+  essentials: ['essentials?', 'household', 'staples?'],
+  personal_care: ['personal[ _-]?care', 'hygiene', 'toiletries'],
+  other: [],
+};
+
+const STORE_MAP = [
+  { name: 'Blinkit', pattern: /blinkit/i, tag: '[Blinkit]' },
+  { name: 'Zepto', pattern: /zepto/i, tag: '[Zepto]' },
+  { name: 'Instamart', pattern: /instamart/i, tag: '[Instamart]' },
+  { name: 'Apollo', pattern: /(apollo|pharmacy|chemist|medplus)/i, tag: '[Apollo]' },
+  { name: 'Local Mandi', pattern: /(local\s+mandi|mandi|sabzi\s+mandi|vendor|thela)/i, tag: '[Local Mandi]' },
+  { name: 'Licious', pattern: /(licious|meat\s+shop|butcher)/i, tag: '[Licious]' },
+];
+
+/**
+ * Parses natural language input (from voice transcription or typed text)
+ * Supports both conversational phrasing ("2 packets Amul Gold milk urgent for Rahul from Blinkit")
+ * and structured voice commands ("Item name Amul milk Category dairy Quantity 2 packets Note chilled Store Blinkit For person Rahul urgent").
+ * Structural command words are never included in the parsed item_name.
+ */
 export function parseGroceryInput(text: string): Partial<AddItemPayload> {
   if (!text || !text.trim()) {
     return {};
@@ -61,79 +87,131 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
   let quantity: string | null = null;
   let category: ItemCategory = 'other';
   let note: string | null = null;
+  let storeTag: string | null = null;
 
-  // Check for store / merchant keywords
-  const storePatterns: { regex: RegExp; tag: string }[] = [
-    { regex: /\b(from\s+)?blinkit\b/i, tag: '[Blinkit]' },
-    { regex: /\b(from\s+)?zepto\b/i, tag: '[Zepto]' },
-    { regex: /\b(from\s+)?instamart\b/i, tag: '[Instamart]' },
-    { regex: /\b(from\s+)?(apollo|pharmacy|chemist|medplus)\b/i, tag: '[Apollo]' },
-    { regex: /\b(from\s+)?(local\s+mandi|mandi|sabzi\s+mandi|vendor|thela)\b/i, tag: '[Local Mandi]' },
-    { regex: /\b(from\s+)?(licious|meat\s+shop|butcher)\b/i, tag: '[Licious]' },
-  ];
+  // 1. Explicit Category parsing: e.g. "Category dairy", "Category is veggies", "Category: fruits"
+  const catRegex = /\bcategory\s*(?:is|as|:)?\s*([a-zA-Z_]+(?:\s+[a-zA-Z_]+)?)/i;
+  const catMatch = cleanText.match(catRegex);
+  if (catMatch) {
+    const rawCat = catMatch[1].trim().toLowerCase();
+    cleanText = cleanText.replace(catMatch[0], ' ');
+    let matchedCat: ItemCategory = 'other';
+    for (const [key, patterns] of Object.entries(EXPLICIT_CATEGORY_MAP)) {
+      if (patterns.some((p) => new RegExp(`^${p}$`, 'i').test(rawCat))) {
+        matchedCat = key as ItemCategory;
+        break;
+      }
+    }
+    category = matchedCat;
+  }
 
-  for (const { regex, tag } of storePatterns) {
-    if (regex.test(cleanText)) {
-      note = tag;
-      cleanText = cleanText.replace(regex, ' ');
-      break;
+  // 2. Explicit Store / Merchant parsing: e.g. "Store Blinkit", "Merchant Zepto", "Store is Instamart"
+  const storeRegex = /\b(?:store|merchant)\s*(?:is|as|from|:)?\s*([a-zA-Z0-9\s]+?)(?=\s+(?:item|category|quantity|notes?|for|person|urgent)|$)/i;
+  const explicitStoreMatch = cleanText.match(storeRegex);
+  if (explicitStoreMatch) {
+    const rawStore = explicitStoreMatch[1].trim();
+    cleanText = cleanText.replace(explicitStoreMatch[0], ' ');
+    for (const s of STORE_MAP) {
+      if (s.pattern.test(rawStore)) {
+        storeTag = s.tag;
+        break;
+      }
+    }
+    // If store not recognized among listed apps, defaults to any/no specific store per user instructions
+  } else {
+    // Check implicit store mention e.g. "from blinkit"
+    for (const s of STORE_MAP) {
+      const impRegex = new RegExp(`\\b(from\\s+)?${s.pattern.source}\\b`, 'i');
+      if (impRegex.test(cleanText)) {
+        storeTag = s.tag;
+        cleanText = cleanText.replace(impRegex, ' ');
+        break;
+      }
     }
   }
 
-  // 1. Check for urgency keywords
+  // 3. Explicit Note / Notes parsing: e.g. "Note chilled", "Notes: please get organic"
+  const noteRegex = /\b(?:notes?)\s*(?:is|as|that|:|-)?\s*([a-zA-Z0-9\s,\.\-]+?)(?=\s+(?:item|category|quantity|store|merchant|for|person|urgent)|$)/i;
+  const noteMatch = cleanText.match(noteRegex);
+  if (noteMatch) {
+    note = noteMatch[1].trim();
+    cleanText = cleanText.replace(noteMatch[0], ' ');
+  }
+
+  // 4. Quantity parsing: explicit "Quantity 2 packets" or natural unit "2 packets", "500g", "1 kg"
+  const explicitQtyRegex = /\bquantity\s*(?:is|as|of|:)?\s*([0-9a-zA-Z\.\s]+?)(?=\s+(?:item|category|notes?|store|merchant|for|person|urgent)|$)/i;
+  const explicitQtyMatch = cleanText.match(explicitQtyRegex);
+  if (explicitQtyMatch) {
+    quantity = explicitQtyMatch[1].trim();
+    cleanText = cleanText.replace(explicitQtyMatch[0], ' ');
+  } else {
+    const qtyRegex = /\b(\d+(?:\.\d+)?\s*(?:kg|g|gm|gms|ml|l|ltr|litres?|liters?|packets?|packs?|pcs|pieces?|bottles?|cans?|boxes?|crates?|rolls?|bunches?|cups?|slices?))\b/i;
+    const qtyMatch = cleanText.match(qtyRegex);
+    if (qtyMatch && qtyMatch[1]) {
+      quantity = qtyMatch[1].trim();
+      cleanText = cleanText.replace(qtyMatch[0], ' ');
+    } else {
+      const leadingCountMatch = cleanText.match(/^(\d+)\s+([A-Za-z])/);
+      if (leadingCountMatch) {
+        quantity = `${leadingCountMatch[1]} pcs`;
+        cleanText = cleanText.replace(new RegExp(`^${leadingCountMatch[1]}\\s+`), '');
+      }
+    }
+  }
+
+  // 5. Urgency keywords
   const urgentRegex = /\b(urgent|emergency|asap|jaldi|fast|priority|needed today)\b/gi;
   if (urgentRegex.test(cleanText)) {
     is_urgent = true;
     cleanText = cleanText.replace(urgentRegex, ' ');
   }
 
-  // 2. Check for recipient ("for [Name]")
-  const forRegex = /\bfor\s+([A-Za-z0-9_]{2,15})\b/i;
+  // 6. Recipient ("for [Name]", "for person [Name]", "person [Name]")
+  const forRegex = /\b(?:for\s+person|for|person)\s*[:]?\s*([A-Za-z0-9_]{2,15})\b/i;
   const forMatch = cleanText.match(forRegex);
   if (forMatch && forMatch[1]) {
-    const rawName = forMatch[1];
-    // Capitalize recipient
+    const rawName = forMatch[1].trim();
     for_user = rawName.charAt(0).toUpperCase() + rawName.slice(1);
     cleanText = cleanText.replace(forMatch[0], ' ');
   }
 
-  // 3. Check for quantities (e.g. "2 packets", "500g", "1 kg", "3 pcs", "6 eggs", "2 packs")
-  const qtyRegex = /\b(\d+(?:\.\d+)?\s*(?:kg|g|gm|gms|ml|l|ltr|litres?|liters?|packets?|packs?|pcs|pieces?|bottles?|cans?|boxes?|crates?|rolls?|bunches?|cups?|slices?))\b/i;
-  const qtyMatch = cleanText.match(qtyRegex);
-  if (qtyMatch && qtyMatch[1]) {
-    quantity = qtyMatch[1].trim();
-    cleanText = cleanText.replace(qtyMatch[0], ' ');
-  } else {
-    // Check leading count, e.g. "2 Amul Milk"
-    const leadingCountMatch = cleanText.match(/^(\d+)\s+([A-Za-z])/);
-    if (leadingCountMatch) {
-      quantity = `${leadingCountMatch[1]} pcs`;
-      cleanText = cleanText.replace(new RegExp(`^${leadingCountMatch[1]}\\s+`), '');
-    }
-  }
+  // 7. Strip structural keyword labels so they never leak into item_name
+  const structuralRegex = /\b(item\s+name|item|category|quantity|for\s+person|person|notes?|store|merchant|urgent)\b/gi;
+  cleanText = cleanText.replace(structuralRegex, ' ');
 
-  // 4. Normalize remaining item name
+  // Normalize remaining item name
   let itemName = cleanText
-    .replace(/[,\.\-\/\\_]/g, ' ')
+    .replace(/[:\-,\.\/\\_]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
   // If item name starts with "and", remove it
   itemName = itemName.replace(/^and\s+/i, '').trim();
 
-  // 5. Detect category based on keywords
-  const lowerName = itemName.toLowerCase();
-  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (cat === 'other') continue;
-    const match = keywords.some((kw) => {
-      // match whole word or substring for distinctive brand names
-      const kwRegex = new RegExp(`\\b${kw}\\b`, 'i');
-      return kwRegex.test(lowerName) || lowerName.includes(kw);
-    });
-    if (match) {
-      category = cat as ItemCategory;
-      break;
+  // 8. If category was not explicitly specified, auto-detect from keyword catalog
+  if (category === 'other' && itemName) {
+    const lowerName = itemName.toLowerCase();
+    for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+      if (cat === 'other') continue;
+      const match = keywords.some((kw) => {
+        const kwRegex = new RegExp(`\\b${kw}\\b`, 'i');
+        return kwRegex.test(lowerName) || lowerName.includes(kw);
+      });
+      if (match) {
+        category = cat as ItemCategory;
+        break;
+      }
     }
+  }
+
+  // Compose final note with store tag if present
+  let finalNote: string | null = null;
+  if (storeTag && note) {
+    finalNote = `${storeTag} ${note}`;
+  } else if (storeTag) {
+    finalNote = storeTag;
+  } else if (note) {
+    finalNote = note;
   }
 
   // Capitalize first letter of item name
@@ -147,7 +225,7 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
     category,
     is_urgent,
     for_user,
-    note,
+    note: finalNote,
   };
 }
 

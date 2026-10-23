@@ -2,8 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAppStore } from '@/store/useAppStore';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -12,13 +13,22 @@ import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
 function RegisterContent() {
+  const router = useRouter();
   const { signUp } = useAuth();
+  const { profile } = useAppStore();
   const searchParams = useSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+
+  // If user is already authenticated, redirect immediately back to their list/dashboard
+  useEffect(() => {
+    if (profile?.id) {
+      router.replace('/list');
+    }
+  }, [profile?.id, router]);
 
   useEffect(() => {
     const codeParam = searchParams.get('code');

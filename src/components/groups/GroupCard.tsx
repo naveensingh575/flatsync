@@ -17,6 +17,7 @@ import { Flat, Profile } from '@/types/app.types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { openExternalSafely } from '@/lib/quickCommerce';
 import toast from 'react-hot-toast';
 
 interface GroupCardProps {
@@ -54,7 +55,7 @@ export function GroupCard({
     const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://grocerysync.vercel.app';
     const joinUrl = `${siteUrl}/register?code=${group.join_code}`;
     const message = `🛒 Join our "${group.name}" group on GrocerySync to add groceries together:\n\n👉 ${joinUrl}\n\nInvite Code: ${group.join_code}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    openExternalSafely(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`);
   }
 
   async function handleShareLink() {

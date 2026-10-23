@@ -60,7 +60,7 @@ export function isMobileDevice(): boolean {
  * Opens an external URL safely in a new tab/app without hijacking or navigating
  * the current GrocerySync application away to a blank redirect page.
  */
-function openExternalSafely(url: string): void {
+export function openExternalSafely(url: string): void {
   if (typeof window === 'undefined') return;
 
   try {
