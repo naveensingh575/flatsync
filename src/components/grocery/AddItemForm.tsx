@@ -423,7 +423,7 @@ export function AddItemForm({
               />
               <Input
                 label="For Person"
-                placeholder="e.g. Naveen, Mom, Alex"
+                placeholder="e.g. Alex"
                 value={form.for_user ?? ''}
                 onChange={(e) => set('for_user', e.target.value)}
               />

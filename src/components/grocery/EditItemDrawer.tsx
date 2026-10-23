@@ -130,7 +130,7 @@ export function EditItemDrawer({
           />
           <Input
             label="For Person"
-            placeholder="e.g. Naveen, Priya"
+            placeholder="e.g. Alex"
             value={form.for_user ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, for_user: e.target.value }))}
           />
