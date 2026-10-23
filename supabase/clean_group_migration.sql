@@ -54,20 +54,31 @@ END $$;
 -- 2. Clean 'group_members' table
 CREATE TABLE IF NOT EXISTS public.group_members (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id   UUID NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
-  user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  group_id   UUID NOT NULL,
+  user_id    UUID NOT NULL,
   role       TEXT DEFAULT 'member',
   joined_at  TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(group_id, user_id)
 );
 
+-- Delete orphaned group members if groups were deleted
+DELETE FROM public.group_members WHERE group_id NOT IN (SELECT id FROM public.groups);
+
+-- Ensure foreign keys on group_members
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'group_members_group_id_fkey') THEN
+    ALTER TABLE public.group_members ADD CONSTRAINT group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- 3. Items table: migrate flat_id -> group_id
-ALTER TABLE public.items ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS group_id UUID;
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS last_edited_by_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS for_user TEXT;
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS store_tag TEXT;
 
--- Drop any legacy policies referencing flat_id before dropping column
+-- Drop legacy policies referencing flat_id before dropping column
 DROP POLICY IF EXISTS "flat members can view items" ON public.items;
 DROP POLICY IF EXISTS "flat members can add items" ON public.items;
 DROP POLICY IF EXISTS "flat members can update items" ON public.items;
@@ -75,14 +86,27 @@ DROP POLICY IF EXISTS "flat members can delete items" ON public.items;
 
 DO $$
 BEGIN
+  -- If flat_id column exists, copy valid group IDs and remove orphaned rows
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'items' AND column_name = 'flat_id') THEN
-    UPDATE public.items SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
+    -- Delete orphaned items referencing non-existent groups
+    DELETE FROM public.items WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id NOT IN (SELECT id FROM public.groups);
+    UPDATE public.items SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id IN (SELECT id FROM public.groups);
     ALTER TABLE public.items DROP COLUMN flat_id CASCADE;
+  END IF;
+  -- Clean any lingering orphaned items
+  DELETE FROM public.items WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM public.groups);
+END $$;
+
+-- Ensure foreign key constraint on items(group_id)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'items_group_id_fkey') THEN
+    ALTER TABLE public.items ADD CONSTRAINT items_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
 -- 4. Orders table: migrate flat_id -> group_id
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS group_id UUID;
 
 DROP POLICY IF EXISTS "flat members can view orders" ON public.orders;
 DROP POLICY IF EXISTS "flat members can create orders" ON public.orders;
@@ -90,13 +114,22 @@ DROP POLICY IF EXISTS "flat members can create orders" ON public.orders;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'flat_id') THEN
-    UPDATE public.orders SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
+    DELETE FROM public.orders WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id NOT IN (SELECT id FROM public.groups);
+    UPDATE public.orders SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id IN (SELECT id FROM public.groups);
     ALTER TABLE public.orders DROP COLUMN flat_id CASCADE;
+  END IF;
+  DELETE FROM public.orders WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM public.groups);
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'orders_group_id_fkey') THEN
+    ALTER TABLE public.orders ADD CONSTRAINT orders_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
 -- 5. Ordering_sessions table: migrate flat_id -> group_id
-ALTER TABLE public.ordering_sessions ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
+ALTER TABLE public.ordering_sessions ADD COLUMN IF NOT EXISTS group_id UUID;
 
 DROP POLICY IF EXISTS "flat members can view sessions" ON public.ordering_sessions;
 DROP POLICY IF EXISTS "flat members can create sessions" ON public.ordering_sessions;
@@ -104,19 +137,36 @@ DROP POLICY IF EXISTS "flat members can create sessions" ON public.ordering_sess
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ordering_sessions' AND column_name = 'flat_id') THEN
-    UPDATE public.ordering_sessions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
+    DELETE FROM public.ordering_sessions WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id NOT IN (SELECT id FROM public.groups);
+    UPDATE public.ordering_sessions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id IN (SELECT id FROM public.groups);
     ALTER TABLE public.ordering_sessions DROP COLUMN flat_id CASCADE;
+  END IF;
+  DELETE FROM public.ordering_sessions WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM public.groups);
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'ordering_sessions_group_id_fkey') THEN
+    ALTER TABLE public.ordering_sessions ADD CONSTRAINT ordering_sessions_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
 -- 6. Profiles table: migrate flat_id -> group_id
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE SET NULL;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS group_id UUID;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'flat_id') THEN
-    UPDATE public.profiles SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
+    UPDATE public.profiles SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id IN (SELECT id FROM public.groups);
     ALTER TABLE public.profiles DROP COLUMN flat_id CASCADE;
+  END IF;
+  UPDATE public.profiles SET group_id = NULL WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM public.groups);
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'profiles_group_id_fkey') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT profiles_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE SET NULL;
   END IF;
 END $$;
 
@@ -124,7 +174,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID,
-  group_id   UUID REFERENCES public.groups(id) ON DELETE CASCADE,
+  group_id   UUID,
   endpoint   TEXT NOT NULL UNIQUE,
   p256dh     TEXT NOT NULL,
   auth       TEXT NOT NULL,
@@ -132,13 +182,24 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE public.push_subscriptions ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
+ALTER TABLE public.push_subscriptions ADD COLUMN IF NOT EXISTS group_id UUID;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name = 'flat_id') THEN
-    UPDATE public.push_subscriptions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
+    -- Delete push subscriptions pointing to deleted or non-existent groups
+    DELETE FROM public.push_subscriptions WHERE flat_id IS NOT NULL AND flat_id NOT IN (SELECT id FROM public.groups);
+    UPDATE public.push_subscriptions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL AND flat_id IN (SELECT id FROM public.groups);
     ALTER TABLE public.push_subscriptions DROP COLUMN flat_id CASCADE;
+  END IF;
+  -- Clean any orphaned subscriptions before applying foreign key constraint
+  DELETE FROM public.push_subscriptions WHERE group_id IS NOT NULL AND group_id NOT IN (SELECT id FROM public.groups);
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'push_subscriptions_group_id_fkey') THEN
+    ALTER TABLE public.push_subscriptions ADD CONSTRAINT push_subscriptions_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
   END IF;
 END $$;
 
