@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Plus, Users, X } from 'lucide-react';
 import { useFlat } from '@/hooks/useFlat';
+import { useAppStore } from '@/store/useAppStore';
 import { GroupCard } from '@/components/groups/GroupCard';
 import { Flat } from '@/types/app.types';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ interface GroupSwitcherProps {
 
 export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
   const router = useRouter();
+  const { setCurrentGroupId } = useAppStore();
   const { userGroups, groupMembersMap, isAdmin, makeAdmin, leaveGroup, deleteGroup } = useFlat(currentFlat?.id);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,8 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
     if (success && groupId === currentFlat?.id) {
       const remaining = userGroups.filter((g) => g.id !== groupId);
       if (remaining.length > 0) {
-        router.push(`/flat/${remaining[0].id}`);
+        setCurrentGroupId(remaining[0].id);
+        router.push('/list');
       } else {
         router.push('/onboarding');
       }
@@ -52,7 +55,8 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
     if (success && groupId === currentFlat?.id) {
       const remaining = userGroups.filter((g) => g.id !== groupId);
       if (remaining.length > 0) {
-        router.push(`/flat/${remaining[0].id}`);
+        setCurrentGroupId(remaining[0].id);
+        router.push('/list');
       } else {
         router.push('/onboarding');
       }
@@ -125,7 +129,8 @@ export function GroupSwitcher({ currentFlat }: GroupSwitcherProps) {
                   isAdmin={isAdmin(group.id)}
                   onSelectGroup={(id) => {
                     setIsOpen(false);
-                    router.push(`/flat/${id}`);
+                    setCurrentGroupId(id);
+                    router.push('/list');
                   }}
                   onLeaveGroup={handleLeaveGroup}
                   onDeleteGroup={handleDeleteGroup}

@@ -486,7 +486,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                   <button
                     onClick={() => {
                       setIsOpen(false);
-                      router.push(`/flat/${flatId}/settings`);
+                      router.push('/settings');
                     }}
                     className="w-full flex items-center justify-between p-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors border border-zinc-100 dark:border-zinc-800 cursor-pointer"
                   >

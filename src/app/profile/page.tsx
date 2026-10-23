@@ -19,7 +19,7 @@ export default async function ProfileFallbackPage() {
         .maybeSingle();
 
       if (memberRow?.group_id) {
-        target = `/flat/${memberRow.group_id}/profile`;
+        target = '/profile';
       } else {
         // 2. Check profile group_id
         const { data: profile } = await supabase
@@ -30,7 +30,7 @@ export default async function ProfileFallbackPage() {
 
         const resolvedGroupId = profile?.group_id || profile?.flat_id;
         if (resolvedGroupId) {
-          target = `/flat/${resolvedGroupId}/profile`;
+          target = '/profile';
         } else {
           target = '/onboarding';
         }

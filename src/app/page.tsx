@@ -19,7 +19,7 @@ export default async function RootPage() {
         .maybeSingle();
 
       if (memberRow?.group_id) {
-        target = `/flat/${memberRow.group_id}`;
+        target = '/list';
       } else {
         // 2. Check profile group_id
         const { data: profile } = await supabase
@@ -30,7 +30,7 @@ export default async function RootPage() {
 
         const resolvedGroupId = profile?.group_id || profile?.flat_id;
         if (resolvedGroupId) {
-          target = `/flat/${resolvedGroupId}`;
+          target = '/list';
         } else {
           target = '/onboarding';
         }

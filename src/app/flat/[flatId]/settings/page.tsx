@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFlat } from '@/hooks/useFlat';
 import { useAppStore } from '@/store/useAppStore';
@@ -11,15 +12,26 @@ import { Plus } from 'lucide-react';
 export default function SettingsPage() {
   const router = useRouter();
   const routeParams = useParams();
-  const flatId = (routeParams?.flatId as string) || '';
+  const routeFlatId = (routeParams?.flatId as string) || '';
+  const { userGroups, currentGroupId, setCurrentGroupId, profile } = useAppStore();
+  const flatId = (routeFlatId && routeFlatId !== 'current' && routeFlatId !== 'list')
+    ? routeFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
+
+  // Clean URL: Scrub `/flat/...` from browser address bar and display `/settings`
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/flat/')) {
+      window.history.replaceState(null, '', '/settings');
+    }
+  }, []);
+
   const { flat, groupMembersMap, isAdmin, makeAdmin, leaveGroup, deleteGroup } = useFlat(flatId);
-  const { userGroups } = useAppStore();
 
   async function handleLeaveGroup(groupId: string) {
     const success = await leaveGroup(groupId);
     if (success && groupId === flatId) {
       const remaining = userGroups.filter((g) => g.id !== groupId);
-      if (remaining.length > 0) router.push(`/flat/${remaining[0].id}`);
+      if (remaining.length > 0) router.push('/list');
       else router.push('/onboarding');
     }
     return success;
@@ -29,7 +41,7 @@ export default function SettingsPage() {
     const success = await deleteGroup(groupId);
     if (success && groupId === flatId) {
       const remaining = userGroups.filter((g) => g.id !== groupId);
-      if (remaining.length > 0) router.push(`/flat/${remaining[0].id}`);
+      if (remaining.length > 0) router.push('/list');
       else router.push('/onboarding');
     }
     return success;
@@ -64,8 +76,10 @@ export default function SettingsPage() {
                 group={g}
                 members={groupMembersMap[g.id] || []}
                 isActive={g.id === flatId}
-                isAdmin={isAdmin(g.id)}
-                onSelectGroup={(id) => router.push(`/flat/${id}`)}
+                onSelectGroup={(id) => {
+                  setCurrentGroupId(id);
+                  router.push('/list');
+                }}
                 onLeaveGroup={handleLeaveGroup}
                 onDeleteGroup={handleDeleteGroup}
                 onMakeAdmin={(userId) => makeAdmin(g.id, userId)}

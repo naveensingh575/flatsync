@@ -35,9 +35,12 @@ function playNotificationChime() {
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 
-export function useOrderingStatus(flatId: string) {
+export function useOrderingStatus(inputFlatId?: string) {
   const supabase = createClient();
-  const { profile, setActiveSession, setIsAddItemOpen } = useAppStore();
+  const { profile, currentGroupId, userGroups, setActiveSession, setIsAddItemOpen } = useAppStore();
+  const flatId = (inputFlatId && inputFlatId !== 'current' && inputFlatId !== 'list')
+    ? inputFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
   const [session, setSession] = useState<OrderingSession | null>(null);
 
   const prevSessionIdRef = useRef<string | null>(null);

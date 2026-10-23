@@ -48,10 +48,8 @@ function OnboardingContent() {
     const isExplicitNew = searchParams.get('new') === 'true';
 
     if (!codeParam && !isExplicitNew && profile?.id) {
-      if (userGroups && userGroups.length > 0) {
-        router.replace(`/flat/${userGroups[0].id}`);
-      } else if (profile.flat_id) {
-        router.replace(`/flat/${profile.flat_id}`);
+      if ((userGroups && userGroups.length > 0) || profile.flat_id || profile.group_id) {
+        router.replace('/list');
       }
     }
   }, [searchParams, userGroups, profile, router]);
@@ -107,7 +105,7 @@ function OnboardingContent() {
       setProfile({ ...profile, group_id: group.id, flat_id: group.id });
 
       toast.success(`${group.name} created! Code: ${code}`);
-      router.push(`/flat/${group.id}`);
+      router.push('/list');
     } catch (err: any) {
       console.error('Group creation error:', err);
       toast.error(getFriendlyErrorMessage(err, 'Unable to create group. Please try again.'));
@@ -157,7 +155,7 @@ function OnboardingContent() {
       setProfile({ ...profile, group_id: group.id, flat_id: group.id });
 
       toast.success(`Joined ${group.name}! 🎉`);
-      router.push(`/flat/${group.id}`);
+      router.push('/list');
     } catch (err: any) {
       console.error('Group join error:', err);
       toast.error(getFriendlyErrorMessage(err, 'Could not find a group with this join code. Please check and try again.'));
@@ -170,7 +168,7 @@ function OnboardingContent() {
     <div className="w-full max-w-sm space-y-6">
       {userGroups.length > 0 && (
         <button
-          onClick={() => router.push(`/flat/${userGroups[0].id}`)}
+          onClick={() => router.push('/list')}
           className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
         >
           <ArrowLeft size={14} /> Back to {userGroups[0].name}

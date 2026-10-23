@@ -37,9 +37,16 @@ export default function GroupsSwitchPage() {
     }
   }, [userGroups.length, displayGroups, setUserGroups]);
 
+  // Clean URL: Scrub `/flat/...` from browser address bar and display `/groups`
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/flat/')) {
+      window.history.replaceState(null, '', '/groups');
+    }
+  }, []);
+
   function handleSelectGroup(groupId: string) {
     setCurrentGroupId(groupId);
-    router.push(`/flat/${groupId}`);
+    router.push('/list');
   }
 
   return (
@@ -48,7 +55,7 @@ export default function GroupsSwitchPage() {
       <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <button
-            onClick={() => router.push(flatId ? `/flat/${flatId}` : '/')}
+            onClick={() => router.push('/list')}
             className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer select-none touch-manipulation active:scale-95"
           >
             <ArrowLeft size={16} />
@@ -133,7 +140,7 @@ export default function GroupsSwitchPage() {
         {/* Link to Full Group Management in Settings */}
         <div className="pt-2 text-center">
           <button
-            onClick={() => router.push(`/flat/${flatId}/settings`)}
+            onClick={() => router.push('/settings')}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
           >
             <Settings size={13} />

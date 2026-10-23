@@ -9,9 +9,12 @@ import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import { sendItemAddedNotification } from '@/lib/notifications';
 import toast from 'react-hot-toast';
 
-export function useGroceryList(flatId: string) {
+export function useGroceryList(inputFlatId?: string) {
   const supabase = createClient();
-  const { profile, setProfile } = useAppStore();
+  const { profile, setProfile, currentGroupId, userGroups } = useAppStore();
+  const flatId = (inputFlatId && inputFlatId !== 'current' && inputFlatId !== 'list')
+    ? inputFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
   const [items, setItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);

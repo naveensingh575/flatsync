@@ -3,9 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GroceryItem, Order } from '@/types/app.types';
+import { useAppStore } from '@/store/useAppStore';
 
-export function useHistory(flatId: string) {
+export function useHistory(inputFlatId?: string) {
   const supabase = createClient();
+  const { profile, currentGroupId, userGroups } = useAppStore();
+  const flatId = (inputFlatId && inputFlatId !== 'current' && inputFlatId !== 'list')
+    ? inputFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
   const [orders, setOrders] = useState<Order[]>([]);
   const [purchasedItems, setPurchasedItems] = useState<GroceryItem[]>([]);
   const [loading, setLoading] = useState(true);

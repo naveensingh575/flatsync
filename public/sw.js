@@ -1,4 +1,4 @@
-// FlatSync Service Worker for Web Push & Background Notifications
+// GrocerySync Service Worker for Web Push & Background Notifications
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -10,10 +10,10 @@ self.addEventListener('activate', (event) => {
 // Push notification event (triggered when app is closed / phone locked)
 self.addEventListener('push', (event) => {
   let payload = {
-    title: 'FlatSync Alert 🛒',
-    body: 'New activity in your flat',
-    url: '/',
-    tag: 'flatsync-alert',
+    title: 'GrocerySync Alert 🛒',
+    body: 'New activity in your grocery list',
+    url: '/list',
+    tag: 'grocerysync-alert',
   };
 
   if (event.data) {

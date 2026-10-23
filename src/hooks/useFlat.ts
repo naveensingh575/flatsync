@@ -343,9 +343,13 @@ export function useFlat(flatId?: string) {
     }
   }
 
+  const effectiveFlatId = (flatId && flatId !== 'current' && flatId !== 'list')
+    ? flatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
+
   // Fetch active flat & its members
   const fetchActiveFlat = useCallback(async () => {
-    if (!flatId) {
+    if (!effectiveFlatId) {
       setLoading(false);
       return;
     }
@@ -353,25 +357,34 @@ export function useFlat(flatId?: string) {
     isFetchingFlatRef.current = true;
 
     try {
-      // 1. Fetch group details directly from groups table
+      // 1. Fetch group details directly from groups table (supporting UUID or 6-char join_code)
       let resolvedFlat: Flat | null = null;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveFlatId);
       try {
-        const res = await supabase.from('groups').select('*').eq('id', flatId).maybeSingle();
-        if (res.data) resolvedFlat = res.data as Flat;
+        const res = isUuid
+          ? await supabase.from('groups').select('*').eq('id', effectiveFlatId).maybeSingle()
+          : await supabase.from('groups').select('*').ilike('join_code', effectiveFlatId).maybeSingle();
+        if (res.data) {
+          resolvedFlat = res.data as Flat;
+          if (!isUuid && res.data.id) {
+            setCurrentGroupId(res.data.id);
+          }
+        }
       } catch (_) {}
 
+      const actualGroupId = resolvedFlat?.id || (isUuid ? effectiveFlatId : currentGroupId || '');
       const [groupMembersRes, junctionRows] = await Promise.all([
-        supabase.from('profiles').select('*').eq('group_id', flatId),
-        supabase.from('group_members').select('user_id, role').eq('group_id', flatId),
+        actualGroupId ? supabase.from('profiles').select('*').eq('group_id', actualGroupId) : Promise.resolve({ data: [] }),
+        actualGroupId ? supabase.from('group_members').select('user_id, role').eq('group_id', actualGroupId) : Promise.resolve({ data: [] }),
       ]);
-      if (!resolvedFlat && flatId) {
+      if (!resolvedFlat && actualGroupId) {
         // Fallback to memory store or localStorage cache
-        const cachedFromStore = useAppStore.getState().userGroups.find((g) => g.id === flatId);
+        const cachedFromStore = useAppStore.getState().userGroups.find((g) => g.id === actualGroupId);
         if (cachedFromStore) {
           resolvedFlat = cachedFromStore;
         } else {
           try {
-            const raw = localStorage.getItem(`grocerysync_group_${flatId}`) || localStorage.getItem(`flatsync_group_${flatId}`);
+            const raw = localStorage.getItem(`grocerysync_group_${actualGroupId}`) || localStorage.getItem(`flatsync_group_${actualGroupId}`);
             if (raw) resolvedFlat = JSON.parse(raw);
           } catch (_) {}
         }
@@ -445,14 +458,16 @@ export function useFlat(flatId?: string) {
       }
 
       setMembers(Array.from(memberMap.values()));
-      setCurrentGroupId(flatId);
+      if (actualGroupId) {
+        setCurrentGroupId(actualGroupId);
+      }
     } catch (e) {
       console.error('Error fetching active flat:', e);
     } finally {
       isFetchingFlatRef.current = false;
       setLoading(false);
     }
-  }, [flatId, profile?.id, profile?.name, setCurrentGroupId]);
+  }, [effectiveFlatId, profile?.id, profile?.name, setCurrentGroupId]);
 
   useEffect(() => {
     fetchUserGroups();

@@ -135,7 +135,7 @@ export function sendOrderingAlertNotification(
 
   const title = `🛒 ${buyerName} is ordering on ${platform.toUpperCase()}!`;
   const body = 'Need anything? Tap to add your items before checkout.';
-  const url = flatId ? `/flat/${flatId}` : '/';
+  const url = '/list';
 
   // 1. Show local system notification if permission is active
   if (isNotificationSupported() && Notification.permission === 'granted') {
@@ -192,7 +192,7 @@ export function sendItemAddedNotification(
   const qtyText = quantity ? ` (${quantity})` : '';
   const title = `🛒 ${requesterName} added to the list`;
   const body = `"${itemName}"${qtyText} was just added.`;
-  const url = flatId ? `/flat/${flatId}` : '/';
+  const url = '/list';
 
   // 1. Show local system notification if permission is active
   if (isNotificationSupported() && Notification.permission === 'granted') {

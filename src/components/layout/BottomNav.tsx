@@ -26,8 +26,8 @@ export function BottomNav({
 }: BottomNavProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const isListActive = pathname === `/flat/${flatId}`;
-  const isHistoryActive = pathname.includes('/history');
+  const isListActive = pathname === '/list' || pathname === '/' || (pathname.startsWith('/flat') && !pathname.includes('/history') && !pathname.includes('/profile') && !pathname.includes('/groups'));
+  const isHistoryActive = pathname === '/history' || pathname.includes('/history');
 
   return (
     <nav className="fixed bottom-3 left-0 right-0 z-30 px-4 pointer-events-none pb-safe">
@@ -35,7 +35,7 @@ export function BottomNav({
         <div className="grid grid-cols-4 items-center p-1.5 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-xl shadow-zinc-950/10 dark:shadow-black/40">
           {/* 1. Grocery List (Left Nav) */}
           <Link
-            href={`/flat/${flatId}`}
+            href="/list"
             className={cn(
               'flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group',
               isListActive
@@ -65,7 +65,7 @@ export function BottomNav({
               if (onAddItem) {
                 onAddItem();
               } else {
-                router.push(`/flat/${flatId}?add=true`);
+                router.push('/list?add=true');
               }
             }}
             className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group touch-manipulation select-none active:scale-95"
@@ -114,7 +114,7 @@ export function BottomNav({
                 if (onStartOrder) {
                   onStartOrder();
                 } else {
-                  router.push(`/flat/${flatId}?order=true`);
+                  router.push('/list?order=true');
                 }
               }}
               className="flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group touch-manipulation select-none active:scale-95"
@@ -131,7 +131,7 @@ export function BottomNav({
 
           {/* 4. Order History (Right Nav) */}
           <Link
-            href={`/flat/${flatId}/history`}
+            href="/history"
             className={cn(
               'flex flex-col items-center justify-center py-1 px-1 rounded-full transition-all cursor-pointer group',
               isHistoryActive

@@ -84,12 +84,14 @@ export function OrderChecklistView({
   function handleLaunchApp(targetPlatform: Platform) {
     // 1. Copy list to clipboard so user can paste immediately in app search/chat
     copyFormattedList({ silent: true });
-    // 2. Deep-link or open web fallback
+    // 2. Deep-link or open web fallback safely
     openQuickCommerceApp(targetPlatform);
     const appMeta = QUICK_COMMERCE_APPS[targetPlatform as keyof typeof QUICK_COMMERCE_APPS];
     toast.success(`Opening ${appMeta?.name || targetPlatform} with list copied! 📋`, {
       icon: appMeta?.emoji || '🚀',
     });
+    // 3. Immediately return to items page without showing background processes
+    onClose();
   }
 
   async function handleEnd() {
@@ -172,11 +174,11 @@ export function OrderChecklistView({
           </div>
         </div>
 
-        {/* Progress bar & Copy button row */}
-        <div className="space-y-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+        {/* Counter & Action row (Select All on Left, In Cart Count & Copy on Right) */}
+        <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-            <span>{inCartCount} in cart · {pendingCount} pending</span>
-            <div className="flex items-center gap-1.5">
+            {/* Leftmost: Select All for Cart / Unselect All */}
+            <div>
               {items.length > 0 && (
                 <button
                   type="button"
@@ -188,6 +190,11 @@ export function OrderChecklistView({
                   {pendingCount > 0 ? 'Select All for Cart' : 'Unselect All'}
                 </button>
               )}
+            </div>
+
+            {/* Rightmost: In Cart Count and Copy button */}
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{inCartCount} in cart · {pendingCount} pending</span>
               <button
                 onClick={() => copyFormattedList()}
                 className="flex items-center gap-1 text-zinc-700 dark:text-zinc-300 font-semibold hover:underline bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg text-xs cursor-pointer"
@@ -197,13 +204,6 @@ export function OrderChecklistView({
                 Copy
               </button>
             </div>
-          </div>
-          <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-emerald-500 rounded-full"
-              animate={{ width: `${items.length ? (inCartCount / items.length) * 100 : 0}%` }}
-              transition={{ type: 'spring', stiffness: 200 }}
-            />
           </div>
         </div>
 
@@ -318,11 +318,13 @@ export function OrderChecklistView({
                           if (!isInCart) {
                             onUpdateStatus(item.id, 'in_cart');
                           }
-                          // Deep-link to search result in current platform
+                          // Deep-link to search result in current platform safely
                           searchItemInQuickCommerceApp(activePlatform, item.item_name, item.quantity);
                           toast.success(`Searching "${item.item_name}" in ${currentApp.name}! (Marked in cart ✅)`, {
                             icon: currentApp.emoji,
                           });
+                          // Close drawer to return immediately to grocery list without background redirect screen
+                          onClose();
                         }}
                         className={cn(
                           'text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95',

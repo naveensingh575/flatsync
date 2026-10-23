@@ -42,8 +42,19 @@ import toast from 'react-hot-toast';
 export default function ProfilePage() {
   const router = useRouter();
   const routeParams = useParams();
-  const flatId = (routeParams?.flatId as string) || '';
-  const { profile, userGroups } = useAppStore();
+  const routeFlatId = (routeParams?.flatId as string) || '';
+  const { profile, userGroups, currentGroupId } = useAppStore();
+  const flatId = (routeFlatId && routeFlatId !== 'current' && routeFlatId !== 'list')
+    ? routeFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
+
+  // Clean URL: Scrub `/flat/...` from browser address bar and display `/profile`
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/flat/')) {
+      window.history.replaceState(null, '', '/profile');
+    }
+  }, []);
+
   const { signOut } = useAuth();
   const { flat } = useFlat(flatId);
   const isConnected = true;
@@ -264,7 +275,7 @@ export default function ProfilePage() {
       <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <button
-            onClick={() => router.push(`/flat/${flatId}`)}
+            onClick={() => router.push('/list')}
             className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -413,7 +424,7 @@ export default function ProfilePage() {
             </button>
 
             <button
-              onClick={() => router.push(`/flat/${flatId}/settings`)}
+              onClick={() => router.push('/settings')}
               className="w-full p-4 flex items-center justify-between text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">

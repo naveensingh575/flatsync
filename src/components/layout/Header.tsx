@@ -33,10 +33,8 @@ export function Header({ flat, isConnected = true, isOnline = true }: HeaderProp
   const currentIcon = activeGroup?.icon || '🛒';
   const displayName = activeGroup?.name || (userGroups.length > 0 ? userGroups[0].name : 'My Group');
 
-  const groupsHref = activeFlatId ? `/flat/${activeFlatId}/groups` : '/onboarding';
-  const profileHref = activeFlatId
-    ? `/flat/${activeFlatId}/profile`
-    : (profile?.flat_id ? `/flat/${profile.flat_id}/profile` : '/onboarding');
+  const groupsHref = '/groups';
+  const profileHref = '/profile';
 
   return (
     <header className="sticky top-0 z-20 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, ShoppingCart, Search, X, Zap, CheckCircle2 } from 'lucide-react';
 import { useFlat } from '@/hooks/useFlat';
@@ -19,6 +19,7 @@ import { OrderChecklistView } from '@/components/ordering/OrderChecklistView';
 import { Button } from '@/components/ui/Button';
 import { GroceryItem } from '@/types/app.types';
 import { findDuplicatePairs, mergeQuantities } from '@/lib/itemMatcher';
+import { createClient } from '@/lib/supabase/client';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -30,8 +31,40 @@ import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
   const routeParams = useParams();
-  const flatId = (routeParams?.flatId as string) || '';
-  const { profile, selectedCategory, setSelectedCategory, isAddItemOpen, setIsAddItemOpen } = useAppStore();
+  const router = useRouter();
+  const routeFlatId = (routeParams?.flatId as string) || '';
+  const { profile, userGroups, currentGroupId, setCurrentGroupId, selectedCategory, setSelectedCategory, isAddItemOpen, setIsAddItemOpen } = useAppStore();
+
+  // Resolve effective group id (handling /list, /flat/current, or direct ID)
+  const flatId = (routeFlatId && routeFlatId !== 'current' && routeFlatId !== 'list')
+    ? routeFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0].id : ''));
+
+  // Sync to store if direct ID provided
+  useEffect(() => {
+    if (flatId && flatId !== 'current' && flatId !== 'list' && flatId !== currentGroupId) {
+      setCurrentGroupId(flatId);
+    }
+  }, [flatId, currentGroupId, setCurrentGroupId]);
+
+  // Clean URL: Scrub `/flat/UUID` from browser address bar and display `/list`
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/flat/')) {
+      window.history.replaceState(null, '', '/list');
+    }
+  }, []);
+
+  // Protect route against unauthenticated public access
+  useEffect(() => {
+    async function checkAuth() {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace('/login');
+      }
+    }
+    checkAuth();
+  }, [router]);
 
   const [isOrderDrawerOpen, setIsOrderDrawerOpen] = useState(false);
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
@@ -279,10 +312,6 @@ export default function DashboardPage() {
 
         {/* Item count header & Bulk Select for Cart */}
         <div className="flex items-center justify-between px-4">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
-            {processedItems.length} {processedItems.length === 1 ? 'item' : 'items'}
-            {searchQuery && ` matching "${searchQuery}"`}
-          </p>
           <div className="flex items-center gap-2.5">
             {processedItems.length > 0 && (
               <button
@@ -300,6 +329,10 @@ export default function DashboardPage() {
               </span>
             )}
           </div>
+          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
+            {processedItems.length} {processedItems.length === 1 ? 'item' : 'items'}
+            {searchQuery && ` matching "${searchQuery}"`}
+          </p>
         </div>
 
         {/* Main grocery list */}

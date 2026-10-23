@@ -8,7 +8,7 @@ import { Profile } from '@/types/app.types';
 
 export function useAuth() {
   const supabase = createClient();
-  const { profile, setProfile } = useAppStore();
+  const { profile, setProfile, setCurrentGroupId } = useAppStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -148,9 +148,10 @@ export function useAuth() {
       return;
     }
 
-    // 3. If user already belongs to at least one group, go directly to their flat
+    // 3. If user already belongs to at least one group, go directly to their list
     if (targetFlatId) {
-      router.push(`/flat/${targetFlatId}`);
+      setCurrentGroupId(targetFlatId);
+      router.push('/list');
       return;
     }
 

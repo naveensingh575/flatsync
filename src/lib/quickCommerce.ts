@@ -57,39 +57,58 @@ export function isMobileDevice(): boolean {
 }
 
 /**
+ * Opens an external URL safely in a new tab/app without hijacking or navigating
+ * the current GrocerySync application away to a blank redirect page.
+ */
+function openExternalSafely(url: string): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (a.parentNode) {
+          a.parentNode.removeChild(a);
+        }
+      } catch (_) {}
+    }, 500);
+  } catch (_) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+/**
  * 1-Tap App Launcher:
  * Uses official Universal / App Links (HTTPS) that iOS and Android automatically route
  * directly into the native app if installed, or smoothly open the mobile web store.
- * Synchronous execution inside user gesture prevents browser popup blocking.
+ * Opens in a detached context so GrocerySync never replaces its current screen with a blank page.
  */
 export function openQuickCommerceApp(platform: Platform): void {
   if (platform === 'other') {
-    window.open('https://www.google.com/search?q=grocery+delivery', '_blank', 'noopener,noreferrer');
+    openExternalSafely('https://www.google.com/search?q=grocery+delivery');
     return;
   }
 
   const app = QUICK_COMMERCE_APPS[platform];
   if (!app) return;
 
-  const targetUrl = app.webFallback;
-  try {
-    const win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-      window.location.href = targetUrl;
-    }
-  } catch (_) {
-    window.location.href = targetUrl;
-  }
+  openExternalSafely(app.webFallback);
 }
 
 /**
  * 1-Tap Item Search Universal Deep-Link:
  * Opens Blinkit, Zepto, or Instamart directly into the search results for the given item.
  * - Blinkit: https://blinkit.com/s/?q=...
- * - Zepto: https://www.zeptonow.com/search?q=... (verified official ?q= query parameter)
+ * - Zepto: https://www.zeptonow.com/search?query=... (official ?query= parameter auto-fills search)
  * - Instamart: https://www.swiggy.com/instamart/search?query=...
  * 
- * Works synchronously on mobile iOS & Android without triggering popup blocker.
+ * Works synchronously on mobile iOS & Android without triggering popup blocker or unloading GrocerySync.
  */
 export function searchItemInQuickCommerceApp(platform: Platform, itemName: string, quantity?: string | null): void {
   const cleanName = itemName.trim();
@@ -99,19 +118,13 @@ export function searchItemInQuickCommerceApp(platform: Platform, itemName: strin
   if (platform === 'blinkit') {
     targetUrl = `https://blinkit.com/s/?q=${queryParam}`;
   } else if (platform === 'zepto') {
-    targetUrl = `https://www.zeptonow.com/search?q=${queryParam}`;
+    targetUrl = `https://www.zeptonow.com/search?query=${queryParam}`;
   } else if (platform === 'instamart') {
     targetUrl = `https://www.swiggy.com/instamart/search?query=${queryParam}`;
   } else {
     targetUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanName + ' buy online')}`;
   }
 
-  try {
-    const win = window.open(targetUrl, '_blank', 'noopener,noreferrer');
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-      window.location.href = targetUrl;
-    }
-  } catch (_) {
-    window.location.href = targetUrl;
-  }
+  openExternalSafely(targetUrl);
 }
+

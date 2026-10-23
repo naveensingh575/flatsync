@@ -2,7 +2,7 @@
 
 
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, ChevronDown, Package } from 'lucide-react';
 import { useHistory } from '@/hooks/useHistory';
@@ -19,7 +19,19 @@ import toast from 'react-hot-toast';
 
 export default function HistoryPage() {
   const routeParams = useParams();
-  const flatId = (routeParams?.flatId as string) || '';
+  const routeFlatId = (routeParams?.flatId as string) || '';
+  const { currentGroupId, profile, userGroups } = useAppStore();
+  const flatId = (routeFlatId && routeFlatId !== 'current' && routeFlatId !== 'list')
+    ? routeFlatId
+    : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
+
+  // Clean URL: Scrub `/flat/...` from browser address bar and display `/history`
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/flat/')) {
+      window.history.replaceState(null, '', '/history');
+    }
+  }, []);
+
   const { orders, purchasedItems, loading } = useHistory(flatId);
   const { addItem, addBatchItems } = useGroceryList(flatId);
   const [expanded, setExpanded] = useState<string | null>(null);
