@@ -131,7 +131,7 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
   }
 
   // 3. Explicit Note / Notes parsing: e.g. "Note chilled", "Notes: please get organic"
-  const noteRegex = /\b(?:notes?)\s*(?:is|as|that|:|-)?\s*([a-zA-Z0-9\s,\.\-]+?)(?=\s+(?:item|category|quantity|store|merchant|for|person|urgent)|$)/i;
+  const noteRegex = /\b(?:notes?)\s*(?:is|as|that|:|-)?\s*([a-zA-Z0-9\s,\.\-]+?)(?=\s+(?:item\s+name|item|category|quantity|store|merchant|for|person|urgent|\d+\s+[A-Za-z])|$)/i;
   const noteMatch = cleanText.match(noteRegex);
   if (noteMatch) {
     note = noteMatch[1].trim();
@@ -145,16 +145,19 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
     quantity = explicitQtyMatch[1].trim();
     cleanText = cleanText.replace(explicitQtyMatch[0], ' ');
   } else {
-    const qtyRegex = /\b(\d+(?:\.\d+)?\s*(?:kg|g|gm|gms|ml|l|ltr|litres?|liters?|packets?|packs?|pcs|pieces?|bottles?|cans?|boxes?|crates?|rolls?|bunches?|cups?|slices?))\b/i;
+    // Natural measurement units
+    const qtyRegex = /\b(\d+(?:\.\d+)?\s*(?:kg|g|gm|gms|ml|l|ltr|litres?|liters?|packets?|packs?|pcs|pieces?|bottles?|cans?|boxes?|crates?|rolls?|bunches?|cups?|slices?|dozens?|pouches?|tins?|bags?|bars?|tubs?))\b/i;
     const qtyMatch = cleanText.match(qtyRegex);
     if (qtyMatch && qtyMatch[1]) {
       quantity = qtyMatch[1].trim();
       cleanText = cleanText.replace(qtyMatch[0], ' ');
     } else {
-      const leadingCountMatch = cleanText.match(/^(\d+)\s+([A-Za-z])/);
+      // Natural leading count (e.g. "6 eggs", "3 bananas", "2 Amul milk")
+      const trimmedClean = cleanText.trim();
+      const leadingCountMatch = trimmedClean.match(/^(\d+)\s+([A-Za-z])/);
       if (leadingCountMatch) {
         quantity = `${leadingCountMatch[1]} pcs`;
-        cleanText = cleanText.replace(new RegExp(`^${leadingCountMatch[1]}\\s+`), '');
+        cleanText = cleanText.replace(new RegExp(`\\b${leadingCountMatch[1]}\\b`), ' ');
       }
     }
   }
@@ -167,11 +170,18 @@ export function parseGroceryInput(text: string): Partial<AddItemPayload> {
   }
 
   // 6. Recipient ("for [Name]", "for person [Name]", "person [Name]")
+  const NON_PERSON_WORDS = new Set([
+    'me', 'us', 'today', 'tomorrow', 'morning', 'evening', 'breakfast', 'lunch',
+    'dinner', 'home', 'office', 'room', 'flat', 'now', 'later', 'cooking', 'making',
+    'all', 'everyone', 'tea', 'coffee'
+  ]);
   const forRegex = /\b(?:for\s+person|for|person)\s*[:]?\s*([A-Za-z0-9_]{2,15})\b/i;
   const forMatch = cleanText.match(forRegex);
   if (forMatch && forMatch[1]) {
     const rawName = forMatch[1].trim();
-    for_user = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    if (!NON_PERSON_WORDS.has(rawName.toLowerCase())) {
+      for_user = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    }
     cleanText = cleanText.replace(forMatch[0], ' ');
   }
 
