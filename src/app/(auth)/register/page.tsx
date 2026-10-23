@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Sparkles } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
@@ -59,7 +59,7 @@ function RegisterContent() {
 
       {code && (
         <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
-          <Sparkles size={16} className="text-emerald-500 flex-shrink-0" />
+          <Users size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <span>You were invited to join group #{code}! Create your account to continue.</span>
         </div>
       )}

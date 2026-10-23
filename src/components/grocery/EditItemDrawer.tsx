@@ -169,9 +169,9 @@ export function EditItemDrawer({
               className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium text-zinc-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer pr-10"
             >
               <option value="" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Any / No specific store</option>
-              <option value="[Blinkit]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Blinkit</option>
-              <option value="[Zepto]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Zepto</option>
-              <option value="[Instamart]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Instamart</option>
+              <option value="[Blinkit]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Blinkit</option>
+              <option value="[Zepto]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Zepto</option>
+              <option value="[Instamart]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Instamart</option>
               <option value="[Apollo]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">💊 Apollo Pharmacy</option>
               <option value="[Local Mandi]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥬 Local Mandi</option>
               <option value="[Licious]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥩 Meat / Licious</option>
@@ -219,7 +219,7 @@ export function EditItemDrawer({
           )}
         >
           <Zap size={18} className={form.is_urgent ? 'text-red-500 fill-red-500' : ''} />
-          {form.is_urgent ? '⚡ Urgent (needed today)' : 'Urgent (needed today)'}
+          Urgent (needed today)
         </button>
 
         <div className="flex gap-2 pt-2">

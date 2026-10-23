@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Sparkles, CheckCircle2, Mail } from 'lucide-react';
+import { Users, CheckCircle2, Mail } from 'lucide-react';
 import { getFriendlyErrorMessage } from '@/lib/sanitizeError';
 import toast from 'react-hot-toast';
 
@@ -87,8 +87,8 @@ function LoginContent() {
       )}
 
       {code && (
-        <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-medium animate-in fade-in">
-          <Sparkles size={16} className="text-amber-500 flex-shrink-0" />
+        <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium animate-in fade-in">
+          <Users size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <span>Sign in to join group #{code}!</span>
         </div>
       )}

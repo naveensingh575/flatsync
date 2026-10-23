@@ -121,7 +121,7 @@ export function AddItemForm({
     const tags: string[] = [];
     if (parsed.quantity) tags.push(`Qty: ${parsed.quantity}`);
     if (parsed.category && parsed.category !== 'other') tags.push(`Cat: ${parsed.category}`);
-    if (parsed.is_urgent) tags.push('⚡ Urgent');
+    if (parsed.is_urgent) tags.push('Urgent');
     if (parsed.for_user) tags.push(`For: ${parsed.for_user}`);
 
     if (tags.length > 0) {
@@ -461,9 +461,9 @@ export function AddItemForm({
                   className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm font-medium text-zinc-900 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer pr-10"
                 >
                   <option value="" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Any / No specific store</option>
-                  <option value="[Blinkit]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Blinkit</option>
-                  <option value="[Zepto]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Zepto</option>
-                  <option value="[Instamart]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">⚡ Instamart</option>
+                  <option value="[Blinkit]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Blinkit</option>
+                  <option value="[Zepto]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Zepto</option>
+                  <option value="[Instamart]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">Instamart</option>
                   <option value="[Apollo]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">💊 Apollo Pharmacy</option>
                   <option value="[Local Mandi]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥬 Local Mandi</option>
                   <option value="[Licious]" className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">🥩 Meat / Licious</option>
@@ -484,7 +484,7 @@ export function AddItemForm({
               )}
             >
               <Zap size={18} className={form.is_urgent ? 'text-red-500 fill-red-500' : ''} />
-              {form.is_urgent ? '⚡ Urgent (needed today)' : 'Urgent (needed today)'}
+              Urgent (needed today)
             </button>
 
             {/* Smart Duplicate Warning & 1-Tap Bump */}
@@ -596,7 +596,7 @@ export function AddItemForm({
                             </span>
                             {entry.item.is_urgent && (
                               <span className="text-[10px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 font-bold px-1.5 py-0.2 rounded">
-                                ⚡ Urgent
+                                Urgent
                               </span>
                             )}
                             {entry.item.for_user && (

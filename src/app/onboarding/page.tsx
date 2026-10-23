@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Plus, LogIn, ArrowLeft, Sparkles } from 'lucide-react';
+import { Plus, LogIn, ArrowLeft, Users, KeyRound } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAppStore } from '@/store/useAppStore';
 import { Input } from '@/components/ui/Input';
@@ -179,7 +179,7 @@ function OnboardingContent() {
 
       {invitedCode && mode === 'join' && (
         <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
-          <Sparkles size={16} className="text-emerald-500 flex-shrink-0" />
+          <Users size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <span>You were invited to join group #{invitedCode}! Tap Join below.</span>
         </div>
       )}
@@ -208,8 +208,8 @@ function OnboardingContent() {
             onClick={() => setMode('create')}
             className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
           >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">
-              ✨
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Plus size={22} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
               <p className="font-semibold text-zinc-900 dark:text-white">Create a Group</p>
@@ -221,8 +221,8 @@ function OnboardingContent() {
             onClick={() => setMode('join')}
             className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
           >
-            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-2xl">
-              🔑
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <KeyRound size={22} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="font-semibold text-zinc-900 dark:text-white">Join with Code</p>

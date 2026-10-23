@@ -480,6 +480,41 @@ export function useGroceryList(flatId: string) {
     }
   }
 
+  // 100% Optimistic Batch Status Update (e.g. Select All for Cart)
+  async function batchUpdateStatus(itemIds: string[], status: ItemStatus) {
+    if (itemIds.length === 0) return;
+    const userId = profile?.id || null;
+    const idSet = new Set(itemIds);
+
+    setItems((prev) =>
+      prev.map((i) =>
+        idSet.has(i.id)
+          ? { ...i, status, ordered_by_id: userId, updated_at: new Date().toISOString() }
+          : i
+      )
+    );
+
+    const realIds = itemIds.filter((id) => !id.startsWith('temp-'));
+    if (realIds.length === 0) return;
+
+    try {
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString(),
+      };
+      if (userId) {
+        updateData.ordered_by_id = userId;
+      }
+
+      await supabase
+        .from('items')
+        .update(updateData)
+        .in('id', realIds);
+    } catch (err: any) {
+      console.error('Batch status update error:', err);
+    }
+  }
+
   // 100% Optimistic Delete Item
   async function deleteItem(itemId: string) {
     const previous = itemsRef.current;
@@ -520,6 +555,7 @@ export function useGroceryList(flatId: string) {
     addBatchItems,
     updateItem,
     updateStatus,
+    batchUpdateStatus,
     deleteItem,
     refetch: fetchItems,
   };

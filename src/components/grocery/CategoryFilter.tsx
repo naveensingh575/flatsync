@@ -10,7 +10,7 @@ interface CategoryFilterProps {
 }
 
 export function CategoryFilter({ selected, onChange }: CategoryFilterProps) {
-  const all = [{ value: 'all', label: 'All', emoji: '✨' }, ...ITEM_CATEGORIES];
+  const all = [{ value: 'all', label: 'All', emoji: '' }, ...ITEM_CATEGORIES];
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 px-4 scrollbar-none">
@@ -27,7 +27,7 @@ export function CategoryFilter({ selected, onChange }: CategoryFilterProps) {
                 : 'bg-white dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-zinc-250 dark:border-zinc-750 active:bg-zinc-100 dark:active:bg-zinc-800'
             )}
           >
-            <span className="text-sm leading-none">{cat.emoji}</span>
+            {cat.emoji && <span className="text-sm leading-none">{cat.emoji}</span>}
             <span>{cat.label}</span>
           </button>
         );

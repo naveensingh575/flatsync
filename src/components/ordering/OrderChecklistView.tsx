@@ -47,6 +47,21 @@ export function OrderChecklistView({
   const inCartCount = items.filter((i) => i.status === 'in_cart').length;
   const pendingCount = items.filter((i) => i.status === 'pending').length;
 
+  function handleToggleAllInCart() {
+    const shouldAddAll = pendingCount > 0;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
+    items.forEach((item) => {
+      if (shouldAddAll && item.status === 'pending') {
+        onUpdateStatus(item.id, 'in_cart');
+      } else if (!shouldAddAll && item.status === 'in_cart') {
+        onUpdateStatus(item.id, 'pending');
+      }
+    });
+    toast.success(shouldAddAll ? 'All items added to cart! 🛒' : 'All items moved to pending');
+  }
+
   function copyFormattedList(options?: { silent?: boolean }) {
     const activeItems = items.filter((i) => i.status === 'pending' || i.status === 'in_cart');
     if (activeItems.length === 0) {
@@ -161,14 +176,27 @@ export function OrderChecklistView({
         <div className="space-y-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
             <span>{inCartCount} in cart · {pendingCount} pending</span>
-            <button
-              onClick={() => copyFormattedList()}
-              className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg"
-              title="Copy formatted text list"
-            >
-              <Copy size={13} />
-              Copy List
-            </button>
+            <div className="flex items-center gap-1.5">
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleAllInCart}
+                  className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold hover:underline bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg text-xs cursor-pointer active:scale-95 transition-transform"
+                  title={pendingCount > 0 ? 'Select all items for cart' : 'Unselect all items'}
+                >
+                  <CheckCircle2 size={13} />
+                  {pendingCount > 0 ? 'Select All for Cart' : 'Unselect All'}
+                </button>
+              )}
+              <button
+                onClick={() => copyFormattedList()}
+                className="flex items-center gap-1 text-zinc-700 dark:text-zinc-300 font-semibold hover:underline bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg text-xs cursor-pointer"
+                title="Copy formatted text list"
+              >
+                <Copy size={13} />
+                Copy
+              </button>
+            </div>
           </div>
           <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
             <motion.div

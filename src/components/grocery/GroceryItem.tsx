@@ -52,59 +52,69 @@ export function GroceryItemCard({
     }
   }, []);
 
-  // 75% slide threshold requirement
-  const threshold = Math.max(220, Math.round(cardWidth * 0.75));
+  // Option A: Ergonomic 40% sweet spot (38% for Cart, 42% for Delete)
+  const rightThreshold = Math.max(120, Math.round(cardWidth * 0.38));
+  const leftThreshold = Math.max(135, Math.round(cardWidth * 0.42));
 
   const x = useMotionValue(0);
 
   // Background opacity transitions based on drag direction
-  const rightRevealOpacity = useTransform(x, [15, 60], [0, 1]);
-  const leftRevealOpacity = useTransform(x, [-15, -60], [0, 1]);
+  const rightRevealOpacity = useTransform(x, [10, 50], [0, 1]);
+  const leftRevealOpacity = useTransform(x, [-10, -50], [0, 1]);
 
   useEffect(() => {
     return x.on('change', (latest) => {
-      if (latest >= threshold) {
+      if (latest >= rightThreshold) {
         setSwipeStage((prev) => {
           if (prev !== 'right_ready') {
-            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(15);
             return 'right_ready';
           }
           return prev;
         });
-      } else if (latest > 15) {
+      } else if (latest > 12) {
         setSwipeStage('right_pending');
-      } else if (latest <= -threshold) {
+      } else if (latest <= -leftThreshold) {
         setSwipeStage((prev) => {
           if (prev !== 'left_ready') {
-            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(25);
+            if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20);
             return 'left_ready';
           }
           return prev;
         });
-      } else if (latest < -15) {
+      } else if (latest < -12) {
         setSwipeStage('left_pending');
       } else {
         setSwipeStage('none');
       }
     });
-  }, [x, threshold]);
+  }, [x, rightThreshold, leftThreshold]);
 
   function handleDragEnd(_: any, info: any) {
     setSwipeStage('none');
 
-    // ONLY commit if user has intentionally dragged at least 75% of the card width
-    if (info.offset.x >= threshold) {
+    // Intentional drag (38% threshold or fast intentional flick >= 22%)
+    const isRightCommitted =
+      info.offset.x >= rightThreshold ||
+      (info.velocity.x > 500 && info.offset.x >= cardWidth * 0.22);
+
+    // Intentional drag (42% threshold or fast intentional flick <= -25%)
+    const isLeftCommitted =
+      info.offset.x <= -leftThreshold ||
+      (info.velocity.x < -500 && info.offset.x <= -cardWidth * 0.25);
+
+    if (isRightCommitted) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+      onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
+    } else if (isLeftCommitted) {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         navigator.vibrate(30);
       }
-      onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
-    } else if (info.offset.x <= -threshold) {
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(35);
-      }
       onDelete(item.id);
     }
-    // Otherwise, Framer Motion automatically springs the card safely back to center (x: 0)
+    // Otherwise, Framer Motion smoothly snaps back to center
   }
 
   function handleTap() {
@@ -115,7 +125,7 @@ export function GroceryItemCard({
 
   return (
     <div className="relative rounded-2xl overflow-hidden select-none">
-      {/* Background action reveal layers with visual progress and 75% threshold badge */}
+      {/* Background action reveal layers with clean labels (no percentages) */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
         {/* Swipe Right Reveal: In Cart */}
         <motion.div
@@ -139,7 +149,7 @@ export function GroceryItemCard({
               </span>
             ) : (
               <span className="text-xs font-bold tracking-wide opacity-90">
-                Slide 75% to Cart →
+                Slide to Cart →
               </span>
             )}
           </div>
@@ -160,7 +170,7 @@ export function GroceryItemCard({
               </span>
             ) : (
               <span className="text-xs font-bold tracking-wide opacity-90">
-                ← Slide 75% to Delete
+                ← Slide to Delete
               </span>
             )}
             <Trash2

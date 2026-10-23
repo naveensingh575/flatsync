@@ -133,7 +133,7 @@ export function sendOrderingAlertNotification(
 ): void {
   if (!areAlertsEnabled()) return;
 
-  const title = `⚡ ${buyerName} is ordering on ${platform.toUpperCase()}!`;
+  const title = `🛒 ${buyerName} is ordering on ${platform.toUpperCase()}!`;
   const body = 'Need anything? Tap to add your items before checkout.';
   const url = flatId ? `/flat/${flatId}` : '/';
 

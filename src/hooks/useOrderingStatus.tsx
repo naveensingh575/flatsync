@@ -89,7 +89,7 @@ export function useOrderingStatus(flatId: string) {
                 } max-w-md w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xl rounded-2xl pointer-events-auto flex items-center justify-between p-4 border border-amber-400`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl animate-bounce">⚡</span>
+                  <span className="text-2xl">🛒</span>
                   <div>
                     <p className="font-bold text-sm leading-tight">
                       {buyerName} is ordering on {platformName}!

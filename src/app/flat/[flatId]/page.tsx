@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, ShoppingCart, Search, X, Zap } from 'lucide-react';
+import { Plus, ShoppingCart, Search, X, Zap, CheckCircle2 } from 'lucide-react';
 import { useFlat } from '@/hooks/useFlat';
 import { useGroceryList } from '@/hooks/useGroceryList';
 import { useOrderingStatus } from '@/hooks/useOrderingStatus';
@@ -56,7 +56,18 @@ export default function DashboardPage() {
   }, [flatId, profile?.id]);
 
   const { flat } = useFlat(flatId);
-  const { items, loading, isConnected, isOnline, addItem, addBatchItems, updateItem, updateStatus, deleteItem } = useGroceryList(flatId);
+  const {
+    items,
+    loading,
+    isConnected,
+    isOnline,
+    addItem,
+    addBatchItems,
+    updateItem,
+    updateStatus,
+    batchUpdateStatus,
+    deleteItem,
+  } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
 
   const isActiveSession = !!session;
@@ -110,12 +121,38 @@ export default function DashboardPage() {
         deleteItem(pair.item2.id),
       ]);
     }
-    toast.success(`Merged ${pairs.length} duplicate item${pairs.length === 1 ? '' : 's'}! ✨`);
+    toast.success(`Merged ${pairs.length} duplicate item${pairs.length === 1 ? '' : 's'}`);
+  }
+
+  const pendingInView = useMemo(
+    () => processedItems.filter((i) => i.status === 'pending'),
+    [processedItems]
+  );
+  const inCartInView = useMemo(
+    () => processedItems.filter((i) => i.status === 'in_cart'),
+    [processedItems]
+  );
+
+  async function handleToggleAllCart() {
+    if (processedItems.length === 0) return;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(20);
+    }
+    const hasPending = pendingInView.length > 0;
+    if (hasPending) {
+      const ids = pendingInView.map((i) => i.id);
+      await batchUpdateStatus(ids, 'in_cart');
+      toast.success(`Moved ${ids.length} item${ids.length === 1 ? '' : 's'} to Cart 🛒`);
+    } else {
+      const ids = inCartInView.map((i) => i.id);
+      await batchUpdateStatus(ids, 'pending');
+      toast.success(`Moved ${ids.length} item${ids.length === 1 ? '' : 's'} back to Pending`);
+    }
   }
 
   async function handleEndOrder(total?: number) {
     await endOrdering(total);
-    toast.success('Order placed! Items moved to history 🎉');
+    toast.success('Order placed! Items moved to history');
   }
 
   return (
@@ -240,17 +277,29 @@ export default function DashboardPage() {
         {/* Category filter */}
         <CategoryFilter selected={selectedCategory} onChange={setSelectedCategory} />
 
-        {/* Item count header */}
+        {/* Item count header & Bulk Select for Cart */}
         <div className="flex items-center justify-between px-4">
           <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
             {processedItems.length} {processedItems.length === 1 ? 'item' : 'items'}
             {searchQuery && ` matching "${searchQuery}"`}
           </p>
-          {iAmOrdering && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium animate-pulse">
-              🛒 Ordering mode
-            </span>
-          )}
+          <div className="flex items-center gap-2.5">
+            {processedItems.length > 0 && (
+              <button
+                type="button"
+                onClick={handleToggleAllCart}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer select-none active:scale-95 transition-all"
+              >
+                <CheckCircle2 size={13} />
+                {pendingInView.length > 0 ? `Select All for Cart (${pendingInView.length})` : 'Unselect All'}
+              </button>
+            )}
+            {iAmOrdering && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium animate-pulse">
+                🛒 Ordering
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Main grocery list */}

@@ -45,7 +45,7 @@ export function InlineQuickAdd({ onAdd, onOpenDrawer }: InlineQuickAddProps) {
         note: parsed.note || null,
         for_user: parsed.for_user || null,
       });
-      toast.success(`${parsed.item_name} added! ⚡`, { duration: 2000 });
+      toast.success(`${parsed.item_name} added`, { duration: 2000 });
     } catch {
       toast.error('Failed to add item');
     } finally {

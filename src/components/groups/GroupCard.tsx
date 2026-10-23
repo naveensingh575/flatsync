@@ -178,8 +178,8 @@ export function GroupCard({
                     {m.name}
                   </span>
                   {memberIsAdmin ? (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-0.5">
-                      ⭐ Admin
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                      Admin
                     </span>
                   ) : (
                     isAdmin && onMakeAdmin && (

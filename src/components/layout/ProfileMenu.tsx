@@ -289,7 +289,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
   // Rate GrocerySync
   function handleRateSubmit() {
     setShowRateModal(false);
-    toast.success(`Thank you for rating GrocerySync ${rating} stars! ⭐🎉`);
+    toast.success(`Thank you for rating GrocerySync!`);
   }
 
   // Send Feedback
@@ -779,7 +779,7 @@ export function ProfileMenu({ flatId, isConnected = true, isOnline = true }: Pro
                     </div>
 
                     <Button onClick={handleRateSubmit} className="w-full">
-                      Submit Rating ✨
+                      Submit Rating
                     </Button>
                   </motion.div>
                 </div>

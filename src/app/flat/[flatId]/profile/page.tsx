@@ -636,7 +636,7 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     setShowRateModal(false);
-                    toast.success('Thank you for rating! 🌟');
+                    toast.success('Thank you for rating!');
                   }}
                   className="flex-1 py-2 text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl"
                 >
