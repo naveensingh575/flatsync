@@ -35,9 +35,21 @@ export default function HistoryPage() {
   }, []);
 
   const { isOnline } = useNetworkStatus();
-  const { orders, purchasedItems, loading, refetch } = useHistory(flatId);
+  const { orders, purchasedItems, loading, isError, refetch } = useHistory(flatId);
   const { addItem, addBatchItems } = useGroceryList(flatId);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (orders.length === 0) setTimedOut(true);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [loading, orders.length]);
 
   async function quickReAdd(itemName: string, category: string) {
     await addItem({ item_name: itemName, category: category as any, is_urgent: false, quantity: null, note: null });
@@ -57,10 +69,39 @@ export default function HistoryPage() {
     toast.success(`Re-added all ${items.length} items to your grocery list! 🛒`);
   }
 
-  if (loading) {
+  // 1. Immediately show OfflineState if offline or network error or timeout with no cached orders
+  if (orders.length === 0 && (!isOnline || isError || timedOut)) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
-        <Header />
+        <Header isOnline={isOnline} />
+        <main className="max-w-lg mx-auto p-4 space-y-5 mt-2">
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Order History</h2>
+            <p className="text-sm text-zinc-400">Past orders and re-order</p>
+          </div>
+          <OfflineState
+            title="You are Currently Offline"
+            message={
+              !isOnline
+                ? "GrocerySync couldn't connect to load past orders. Check your internet connection and try again."
+                : "Network connection timed out or is too weak to load orders. Please tap retry."
+            }
+            onRetry={async () => {
+              setTimedOut(false);
+              await refetch();
+            }}
+          />
+        </main>
+        <BottomNav flatId={flatId} />
+      </div>
+    );
+  }
+
+  // 2. Pulse Skeleton during initial loading
+  if (loading && orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
+        <Header isOnline={isOnline} />
         <div className="max-w-lg mx-auto p-4 space-y-3 mt-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-20 rounded-2xl bg-zinc-100 dark:bg-zinc-800 animate-pulse" />
@@ -73,7 +114,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-24">
-      <Header />
+      <Header isOnline={isOnline} />
 
       <main className="max-w-lg mx-auto p-4 space-y-5 mt-2">
         <div>
@@ -82,11 +123,14 @@ export default function HistoryPage() {
         </div>
 
         {orders.length === 0 ? (
-          !isOnline ? (
+          !isOnline || isError ? (
             <OfflineState
               title="You are Currently Offline"
               message="GrocerySync couldn't load past orders. Check your internet connection and try again."
-              onRetry={refetch}
+              onRetry={async () => {
+                setTimedOut(false);
+                await refetch();
+              }}
             />
           ) : (
             <div className="flex flex-col items-center gap-3 py-16 text-center">

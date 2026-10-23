@@ -114,13 +114,6 @@ export function GroceryItemCard({
       }
       onDelete(item.id);
     }
-    // Otherwise, Framer Motion smoothly snaps back to center
-  }
-
-  function handleTap() {
-    if (isOrderingMode) {
-      onUpdateStatus(item.id, statusFlow[item.status]);
-    }
   }
 
   return (
@@ -203,26 +196,34 @@ export function GroceryItemCard({
           'relative flex items-start gap-3.5 p-4 rounded-2xl border transition-colors duration-150 shadow-xs hover:shadow-sm',
           item.status === 'in_cart'
             ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/70 dark:border-emerald-800/50 opacity-95'
-            : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800/80',
-          isOrderingMode && 'cursor-pointer'
+            : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800/80'
         )}
-        onClick={handleTap}
       >
-        {/* Category & Status Indicator (Visual cue; status change is done via smooth slide or checklist) */}
-        <div
+        {/* Left Circle Category & Status Indicator: Interactive toggle button */}
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof navigator !== 'undefined' && navigator.vibrate) {
+              navigator.vibrate(15);
+            }
+            onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
+          }}
           className={cn(
-            'flex-shrink-0 mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 select-none pointer-events-none',
+            'flex-shrink-0 mt-0.5 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-150 select-none cursor-pointer active:scale-90 touch-manipulation',
             item.status === 'in_cart'
               ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/30'
-              : 'border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/60'
+              : 'border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800/60 hover:border-emerald-500 hover:bg-emerald-50/50'
           )}
+          title={item.status === 'in_cart' ? 'Mark as pending' : 'Move to cart'}
         >
           {item.status === 'in_cart' ? (
             <CheckCircle2 size={16} className="text-white fill-emerald-500" strokeWidth={2.5} />
           ) : (
             <span className="text-xs">{catMeta?.emoji || '🛒'}</span>
           )}
-        </div>
+        </button>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">

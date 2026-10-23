@@ -15,8 +15,17 @@ export function useGroceryList(inputFlatId?: string) {
   const flatId = (inputFlatId && inputFlatId !== 'current' && inputFlatId !== 'list')
     ? inputFlatId
     : (currentGroupId || profile?.group_id || profile?.flat_id || (userGroups.length > 0 ? userGroups[0]?.id : ''));
-  const [items, setItems] = useState<GroceryItem[]>([]);
+  const [items, setItems] = useState<GroceryItem[]>(() => {
+    if (typeof window !== 'undefined' && flatId) {
+      try {
+        const cached = localStorage.getItem(`grocerysync_items_cache_${flatId}`);
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [isOnline, setIsOnline] = useState(
     typeof window !== 'undefined' ? navigator.onLine : true
@@ -28,21 +37,30 @@ export function useGroceryList(inputFlatId?: string) {
 
   const fetchItems = useCallback(async () => {
     if (!flatId) return;
+
+    const timeoutPromise = new Promise<{ timeout: true }>((_, reject) =>
+      setTimeout(() => reject(new Error('Network timeout')), 6500)
+    );
+
     try {
       let fetchedItems: any[] = [];
 
-      // 1. Fetch items matching group_id
-      const { data, error } = await supabase
+      // 1. Fetch items matching group_id with timeout protection
+      const itemsPromise = supabase
         .from('items')
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
         .eq('group_id', flatId)
         .in('status', ['pending', 'in_cart'])
         .order('created_at', { ascending: false });
 
+      const { data, error }: any = await Promise.race([itemsPromise, timeoutPromise]);
+
       if (error) {
         console.error('Error fetching items for group:', error);
+        setIsError(true);
       } else {
         fetchedItems = data || [];
+        setIsError(false);
       }
 
       // 2. Fetch profiles for any editors (last_edited_by_id)
@@ -55,32 +73,40 @@ export function useGroceryList(inputFlatId?: string) {
       );
 
       if (editorIds.length > 0) {
-        const { data: editorProfiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', editorIds);
+        try {
+          const { data: editorProfiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', editorIds);
 
-        const editorMap = new Map((editorProfiles || []).map((p: any) => [p.id, p]));
-        fetchedItems = fetchedItems.map((item) => ({
-          ...item,
-          last_edited_by: item.last_edited_by_id
-            ? editorMap.get(item.last_edited_by_id) || (item.last_edited_by_id === item.requested_by_id ? item.requested_by : undefined)
-            : undefined,
-        }));
+          const editorMap = new Map((editorProfiles || []).map((p: any) => [p.id, p]));
+          fetchedItems = fetchedItems.map((item) => ({
+            ...item,
+            last_edited_by: item.last_edited_by_id
+              ? editorMap.get(item.last_edited_by_id) || (item.last_edited_by_id === item.requested_by_id ? item.requested_by : undefined)
+              : undefined,
+          }));
+        } catch (_) {}
       }
 
       setItems(fetchedItems as GroceryItem[]);
+
+      if (!error && fetchedItems) {
+        try {
+          localStorage.setItem(`grocerysync_items_cache_${flatId}`, JSON.stringify(fetchedItems));
+        } catch (_) {}
+      }
     } catch (e) {
       console.error('Error fetching items:', e);
+      setIsError(true);
     } finally {
       setLoading(false);
     }
-  }, [flatId]);
+  }, [flatId, supabase]);
 
   useEffect(() => {
     if (!flatId) return;
     setLoading(true);
-    setItems([]);
     fetchItems();
 
     // Real-time subscription scoped to this group's items with status monitoring
@@ -554,6 +580,7 @@ export function useGroceryList(inputFlatId?: string) {
     loading,
     isConnected,
     isOnline,
+    isError,
     addItem,
     addBatchItems,
     updateItem,

@@ -102,8 +102,21 @@ export default function DashboardPage() {
     batchUpdateStatus,
     deleteItem,
     refetch,
+    isError,
   } = useGroceryList(flatId);
   const { session, startOrdering, endOrdering } = useOrderingStatus(flatId);
+
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (!loading) {
+      setTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (items.length === 0) setTimedOut(true);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [loading, items.length]);
 
   const isActiveSession = !!session;
   const iAmOrdering = session?.buyer_id === profile?.id;
@@ -190,7 +203,7 @@ export default function DashboardPage() {
     toast.success('Order placed! Items moved to history');
   }
 
-  if (loading && items.length === 0 && !flat) {
+  if (loading && items.length === 0 && !flat && isOnline && !timedOut && !isError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 p-6 select-none">
         <div className="flex flex-col items-center gap-5 max-w-sm text-center">
@@ -366,9 +379,12 @@ export default function DashboardPage() {
         {/* Main grocery list */}
         <GroceryList
           items={processedItems}
-          loading={loading}
-          isOnline={isOnline}
-          onRetry={refetch}
+          loading={loading && items.length === 0 && isOnline && !timedOut && !isError}
+          isOnline={isOnline && !isError && !timedOut}
+          onRetry={async () => {
+            setTimedOut(false);
+            await refetch();
+          }}
           isOrderingMode={iAmOrdering}
           onUpdateStatus={async (id, status) => {
             await updateStatus(id, status);
