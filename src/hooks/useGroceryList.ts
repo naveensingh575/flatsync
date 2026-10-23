@@ -213,11 +213,10 @@ export function useGroceryList(flatId: string) {
 
       if (error) {
         console.warn('Primary insert failed, attempting fallback:', error);
-        // Fallback: strip fields that might not exist in old schema
         const fallbackPayload: any = {
           item_name: payload.item_name,
           category: payload.category,
-          flat_id: flatId,
+          group_id: flatId,
           requested_by_id: currentProfile.id,
           status: 'pending',
         };

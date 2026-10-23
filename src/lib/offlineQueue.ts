@@ -17,12 +17,13 @@ export interface OfflineAction {
   };
 }
 
-const STORAGE_KEY = 'flatsync_offline_queue';
+const STORAGE_KEY = 'grocerysync_offline_queue';
+const LEGACY_STORAGE_KEY = 'flatsync_offline_queue';
 
 export function getOfflineQueue(): OfflineAction[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -33,6 +34,7 @@ export function saveOfflineQueue(queue: OfflineAction[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch (err) {
     console.error('Failed to save offline queue:', err);
   }

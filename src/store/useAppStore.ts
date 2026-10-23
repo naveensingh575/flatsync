@@ -72,8 +72,22 @@ export const useAppStore = create<AppState>()(
       clearOptimisticItems: () => set({ optimisticItems: [] }),
     }),
     {
-      name: 'flatsync-app-storage',
-      storage: createJSONStorage(() => localStorage),
+      name: 'grocerysync-app-storage',
+      storage: createJSONStorage(() => ({
+        getItem: (key: string) => {
+          if (typeof window === 'undefined') return null;
+          return localStorage.getItem(key) || localStorage.getItem('flatsync-app-storage');
+        },
+        setItem: (key: string, value: string) => {
+          if (typeof window === 'undefined') return;
+          localStorage.setItem(key, value);
+        },
+        removeItem: (key: string) => {
+          if (typeof window === 'undefined') return;
+          localStorage.removeItem(key);
+          localStorage.removeItem('flatsync-app-storage');
+        },
+      })),
       partialize: (state) => ({
         profile: state.profile,
         userGroups: state.userGroups,

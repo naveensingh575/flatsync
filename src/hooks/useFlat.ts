@@ -120,7 +120,7 @@ export function useFlat(flatId?: string) {
         const existing = useAppStore.getState().userGroups;
         if (!existing || existing.length === 0) {
           try {
-            const raw = localStorage.getItem('flatsync-app-storage');
+            const raw = localStorage.getItem('grocerysync-app-storage') || localStorage.getItem('flatsync-app-storage');
             if (raw) {
               const parsed = JSON.parse(raw);
               if (parsed?.state?.userGroups?.length > 0) {
@@ -155,7 +155,7 @@ export function useFlat(flatId?: string) {
             supabase
               .from('profiles')
               .select('*')
-              .in('flat_id', groupIds)
+              .in('group_id', groupIds)
           ).catch(() => ({ data: [] })),
         ]);
 
@@ -164,10 +164,11 @@ export function useFlat(flatId?: string) {
           map[gid] = new Map();
         });
 
-        // Add legacy
+        // Add primary group members
         ((legacyRes as any)?.data || []).forEach((p: Profile) => {
-          if (p.flat_id && map[p.flat_id]) {
-            map[p.flat_id].set(p.id, { ...p, role: 'member' });
+          const gid = p.group_id || p.flat_id;
+          if (gid && map[gid]) {
+            map[gid].set(p.id, { ...p, role: 'member' });
           }
         });
 
@@ -279,12 +280,13 @@ export function useFlat(flatId?: string) {
         .eq('group_id', targetGroupId)
         .eq('user_id', profile.id);
 
-      if (profile.flat_id === targetGroupId) {
+      const userCurrentGroup = profile.group_id || profile.flat_id;
+      if (userCurrentGroup === targetGroupId) {
         const remaining = userGroups.filter((g) => g.id !== targetGroupId);
         const nextId = remaining.length > 0 ? remaining[0].id : null;
         await supabase
           .from('profiles')
-          .update({ flat_id: nextId })
+          .update({ group_id: nextId })
           .eq('id', profile.id);
       }
 
@@ -369,7 +371,7 @@ export function useFlat(flatId?: string) {
           resolvedFlat = cachedFromStore;
         } else {
           try {
-            const raw = localStorage.getItem(`flatsync_group_${flatId}`);
+            const raw = localStorage.getItem(`grocerysync_group_${flatId}`) || localStorage.getItem(`flatsync_group_${flatId}`);
             if (raw) resolvedFlat = JSON.parse(raw);
           } catch (_) {}
         }
@@ -378,7 +380,7 @@ export function useFlat(flatId?: string) {
       if (resolvedFlat) {
         setFlat(resolvedFlat);
         try {
-          localStorage.setItem(`flatsync_group_${flatId}`, JSON.stringify(resolvedFlat));
+          localStorage.setItem(`grocerysync_group_${flatId}`, JSON.stringify(resolvedFlat));
         } catch (_) {}
       } else {
         // NEVER clear flat to null if we already have it in state or store

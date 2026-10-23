@@ -41,10 +41,10 @@ function LoginContent() {
       const clean = codeParam.trim().toUpperCase().slice(0, 6);
       setCode(clean);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('flatsync_pending_code', clean);
+        localStorage.setItem('grocerysync_pending_code', clean);
       }
     } else if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('flatsync_pending_code');
+      const stored = localStorage.getItem('grocerysync_pending_code') || localStorage.getItem('flatsync_pending_code');
       if (stored) setCode(stored);
     }
   }, [searchParams]);

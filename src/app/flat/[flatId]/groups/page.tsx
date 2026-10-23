@@ -21,7 +21,7 @@ export default function GroupsSwitchPage() {
     if (userGroups && userGroups.length > 0) return userGroups;
     if (flat) return [flat];
     try {
-      const stored = localStorage.getItem('flatsync-app-storage');
+      const stored = localStorage.getItem('grocerysync-app-storage') || localStorage.getItem('flatsync-app-storage');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed?.state?.userGroups?.length > 0) return parsed.state.userGroups;

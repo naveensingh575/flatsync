@@ -136,8 +136,9 @@ export function useAuth() {
     // 2. Check for pending group code (from referral or invite link)
     let pendingCode = explicitCode;
     if (!pendingCode && typeof window !== 'undefined') {
-      pendingCode = localStorage.getItem('flatsync_pending_code') || undefined;
+      pendingCode = localStorage.getItem('grocerysync_pending_code') || localStorage.getItem('flatsync_pending_code') || undefined;
       if (pendingCode) {
+        localStorage.removeItem('grocerysync_pending_code');
         localStorage.removeItem('flatsync_pending_code');
       }
     }
@@ -200,7 +201,7 @@ export function useAuth() {
 
     // Save pending code in localStorage if provided so once they verify email and log in, they join their group
     if (pendingCode && typeof window !== 'undefined') {
-      localStorage.setItem('flatsync_pending_code', pendingCode.trim().toUpperCase());
+      localStorage.setItem('grocerysync_pending_code', pendingCode.trim().toUpperCase());
     }
 
     // Redirect to clean signin page with no auto-filled email or password
