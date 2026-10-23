@@ -67,33 +67,45 @@ ALTER TABLE public.items ADD COLUMN IF NOT EXISTS last_edited_by_id UUID REFEREN
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS for_user TEXT;
 ALTER TABLE public.items ADD COLUMN IF NOT EXISTS store_tag TEXT;
 
+-- Drop any legacy policies referencing flat_id before dropping column
+DROP POLICY IF EXISTS "flat members can view items" ON public.items;
+DROP POLICY IF EXISTS "flat members can add items" ON public.items;
+DROP POLICY IF EXISTS "flat members can update items" ON public.items;
+DROP POLICY IF EXISTS "flat members can delete items" ON public.items;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'items' AND column_name = 'flat_id') THEN
     UPDATE public.items SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
-    ALTER TABLE public.items DROP COLUMN flat_id;
+    ALTER TABLE public.items DROP COLUMN flat_id CASCADE;
   END IF;
 END $$;
 
 -- 4. Orders table: migrate flat_id -> group_id
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
 
+DROP POLICY IF EXISTS "flat members can view orders" ON public.orders;
+DROP POLICY IF EXISTS "flat members can create orders" ON public.orders;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'flat_id') THEN
     UPDATE public.orders SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
-    ALTER TABLE public.orders DROP COLUMN flat_id;
+    ALTER TABLE public.orders DROP COLUMN flat_id CASCADE;
   END IF;
 END $$;
 
 -- 5. Ordering_sessions table: migrate flat_id -> group_id
 ALTER TABLE public.ordering_sessions ADD COLUMN IF NOT EXISTS group_id UUID REFERENCES public.groups(id) ON DELETE CASCADE;
 
+DROP POLICY IF EXISTS "flat members can view sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "flat members can create sessions" ON public.ordering_sessions;
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ordering_sessions' AND column_name = 'flat_id') THEN
     UPDATE public.ordering_sessions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
-    ALTER TABLE public.ordering_sessions DROP COLUMN flat_id;
+    ALTER TABLE public.ordering_sessions DROP COLUMN flat_id CASCADE;
   END IF;
 END $$;
 
@@ -104,7 +116,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'flat_id') THEN
     UPDATE public.profiles SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
-    ALTER TABLE public.profiles DROP COLUMN flat_id;
+    ALTER TABLE public.profiles DROP COLUMN flat_id CASCADE;
   END IF;
 END $$;
 
@@ -126,7 +138,7 @@ DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'push_subscriptions' AND column_name = 'flat_id') THEN
     UPDATE public.push_subscriptions SET group_id = flat_id WHERE group_id IS NULL AND flat_id IS NOT NULL;
-    ALTER TABLE public.push_subscriptions DROP COLUMN flat_id;
+    ALTER TABLE public.push_subscriptions DROP COLUMN flat_id CASCADE;
   END IF;
 END $$;
 
@@ -227,25 +239,68 @@ CREATE POLICY "members can delete items"
   ON public.items FOR DELETE
   USING (true);
 
--- 13. Clean RLS on Ordering Sessions
+-- 13. Clean RLS on Orders
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "flat members can view orders" ON public.orders;
+DROP POLICY IF EXISTS "flat members can create orders" ON public.orders;
+DROP POLICY IF EXISTS "group members can view orders" ON public.orders;
+DROP POLICY IF EXISTS "group members can create orders" ON public.orders;
+DROP POLICY IF EXISTS "members can view orders" ON public.orders;
+DROP POLICY IF EXISTS "members can create orders" ON public.orders;
+
+CREATE POLICY "members can view orders"
+  ON public.orders FOR SELECT
+  USING (true);
+
+CREATE POLICY "members can create orders"
+  ON public.orders FOR INSERT
+  WITH CHECK (true);
+
+-- 14. Clean RLS on Profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "profiles are viewable by anyone" ON public.profiles;
+DROP POLICY IF EXISTS "users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "users can insert own profile" ON public.profiles;
+
+CREATE POLICY "profiles are viewable by anyone"
+  ON public.profiles FOR SELECT
+  USING (true);
+
+CREATE POLICY "users can update own profile"
+  ON public.profiles FOR UPDATE
+  USING (id = auth.uid());
+
+CREATE POLICY "users can insert own profile"
+  ON public.profiles FOR INSERT
+  WITH CHECK (id = auth.uid());
+
+-- 15. Clean RLS on Ordering Sessions
 ALTER TABLE public.ordering_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "flat members can view sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "flat members can create sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "group members can view sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "group members can create sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "buyer can update their session" ON public.ordering_sessions;
 DROP POLICY IF EXISTS "members can view ordering_sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "members can create ordering_sessions" ON public.ordering_sessions;
+DROP POLICY IF EXISTS "members can update ordering_sessions" ON public.ordering_sessions;
+
 CREATE POLICY "members can view ordering_sessions"
   ON public.ordering_sessions FOR SELECT
   USING (true);
 
-DROP POLICY IF EXISTS "members can create ordering_sessions" ON public.ordering_sessions;
 CREATE POLICY "members can create ordering_sessions"
   ON public.ordering_sessions FOR INSERT
   WITH CHECK (true);
 
-DROP POLICY IF EXISTS "members can update ordering_sessions" ON public.ordering_sessions;
 CREATE POLICY "members can update ordering_sessions"
   ON public.ordering_sessions FOR UPDATE
   USING (true);
 
--- 14. Clean RLS on Push Subscriptions
+-- 16. Clean RLS on Push Subscriptions
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Anyone can insert push subscriptions" ON public.push_subscriptions;
