@@ -243,12 +243,27 @@ export function OrderChecklistView({
                       : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
                   )}
                 >
-                  {/* Status Indicator (Tapping disabled in checklist; status changes are done via slide or left circle on the list) */}
-                  <div
-                    className="flex-shrink-0 select-none pointer-events-none"
-                    title={isInCart ? 'In cart' : 'Pending'}
+                  {/* Status Indicator (Tap to toggle status in checklist) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                        navigator.vibrate(15);
+                      }
+                      if (isOos) {
+                        setOosItemIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(item.id);
+                          return next;
+                        });
+                      }
+                      onUpdateStatus(item.id, isInCart ? 'pending' : 'in_cart');
+                    }}
+                    className="flex-shrink-0 cursor-pointer select-none touch-manipulation active:scale-90"
+                    title={isInCart ? 'Remove from cart' : 'Bag item into cart'}
                   >
-                    <div
+                    <motion.div
+                      animate={{ scale: isInCart ? 1 : 0.9 }}
                       className={cn(
                         'w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors',
                         isInCart
@@ -261,8 +276,8 @@ export function OrderChecklistView({
                       ) : (
                         <span className="text-xs">{catMeta?.emoji || '🛒'}</span>
                       )}
-                    </div>
-                  </div>
+                    </motion.div>
+                  </button>
 
                   <div className="flex-1 min-w-0">
                     <p className={cn(

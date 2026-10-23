@@ -316,28 +316,18 @@ export function GroceryItemCard({
               </span>
             )}
 
-            {/* Status / In Cart Toggle Button */}
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                  navigator.vibrate(15);
-                }
-                onUpdateStatus(item.id, item.status === 'in_cart' ? 'pending' : 'in_cart');
-              }}
+            {/* Status / In Cart Indicator Badge (Disabled: tapping does not change status; status change is exclusively via left circle tap or slide) */}
+            <span
               className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer select-none transition-transform active:scale-95 touch-manipulation shadow-2xs',
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold select-none shadow-2xs pointer-events-none',
                 item.status === 'in_cart'
                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700'
+                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/80 dark:border-zinc-700'
               )}
-              title={item.status === 'in_cart' ? 'Tap to mark as Pending' : 'Tap to mark as In Cart'}
             >
               <ShoppingCart size={11} />
               <span>{item.status === 'in_cart' ? 'In Cart ✅' : 'Pending'}</span>
-            </button>
+            </span>
 
             {/* For Person */}
             {item.for_user && (
