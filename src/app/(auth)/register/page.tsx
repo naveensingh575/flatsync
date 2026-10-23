@@ -118,7 +118,7 @@ function RegisterContent() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center justify-start sm:justify-center px-4 pt-10 sm:pt-12 pb-8 sm:py-12">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>

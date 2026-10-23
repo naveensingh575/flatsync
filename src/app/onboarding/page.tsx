@@ -165,31 +165,31 @@ function OnboardingContent() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-6">
+    <div className="w-full max-w-sm space-y-4 sm:space-y-5">
       {userGroups.length > 0 && (
         <button
           onClick={() => router.push('/list')}
-          className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+          className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer select-none active:scale-95 transition-transform"
         >
           <ArrowLeft size={14} /> Back to {userGroups[0].name}
         </button>
       )}
 
       {invitedCode && mode === 'join' && (
-        <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
+        <div className="flex items-center gap-2 p-2.5 sm:p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-medium">
           <Users size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
           <span>You were invited to join group #{invitedCode}! Tap Join below.</span>
         </div>
       )}
 
-      <div className="text-center space-y-2">
-        <div className="text-5xl">{mode === 'create' ? activeGroupType.emoji : '👥'}</div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+      <div className="text-center space-y-1.5 sm:space-y-2">
+        <div className="text-4xl sm:text-5xl">{mode === 'create' ? activeGroupType.emoji : '👥'}</div>
+        <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">
           {mode === 'choose' && 'Groups & Wishlists'}
           {mode === 'create' && 'Create a New Group'}
           {mode === 'join' && 'Join a Group'}
         </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed">
           {mode === 'choose' && 'Organize groceries & quick-orders for flatmates, family, friends, or colleagues.'}
           {mode === 'create' && 'Pick a group category and invite members with a code.'}
           {mode === 'join' && 'Enter the 6-character code shared by your group.'}
@@ -200,31 +200,31 @@ function OnboardingContent() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-3"
+          className="space-y-2.5 sm:space-y-3"
         >
           <button
             onClick={() => setMode('create')}
-            className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
+            className="w-full flex items-center gap-3.5 p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left shadow-xs active:scale-[0.99] cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <Plus size={22} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+              <Plus size={20} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="font-semibold text-zinc-900 dark:text-white">Create a Group</p>
-              <p className="text-sm text-zinc-400">Family, Flat, Friends, or Office</p>
+              <p className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Create a Group</p>
+              <p className="text-xs sm:text-sm text-zinc-400">Family, Flat, Friends, or Office</p>
             </div>
           </button>
 
           <button
             onClick={() => setMode('join')}
-            className="w-full flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left"
+            className="w-full flex items-center gap-3.5 p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-700 hover:border-emerald-400 transition-colors text-left shadow-xs active:scale-[0.99] cursor-pointer"
           >
-            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <KeyRound size={22} className="text-blue-600 dark:text-blue-400" />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <KeyRound size={20} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="font-semibold text-zinc-900 dark:text-white">Join with Code</p>
-              <p className="text-sm text-zinc-400">Enter a 6-character invite code</p>
+              <p className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Join with Code</p>
+              <p className="text-xs sm:text-sm text-zinc-400">Enter a 6-character invite code</p>
             </div>
           </button>
         </motion.div>
@@ -234,24 +234,24 @@ function OnboardingContent() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-4"
+          className="bg-white dark:bg-zinc-900 rounded-3xl p-4.5 sm:p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-3.5 sm:space-y-4"
         >
           <div>
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Group Type</label>
-            <div className="grid grid-cols-3 gap-2 mt-2">
+            <label className="text-[11px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider">Group Type</label>
+            <div className="grid grid-cols-3 gap-2 mt-1.5 sm:mt-2">
               {GROUP_TYPES.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setSelectedType(type.value)}
                   className={cn(
-                    'flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 text-xs font-medium transition-all',
+                    'flex flex-col items-center gap-1 p-2 sm:p-2.5 rounded-xl border-2 text-[11px] sm:text-xs font-medium transition-all active:scale-95 cursor-pointer',
                     selectedType === type.value
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold'
                       : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400'
                   )}
                 >
-                  <span className="text-xl">{type.emoji}</span>
+                  <span className="text-lg sm:text-xl">{type.emoji}</span>
                   <span className="truncate">{type.label}</span>
                 </button>
               ))}
@@ -277,7 +277,7 @@ function OnboardingContent() {
 
           <button
             onClick={() => setMode('choose')}
-            className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+            className="w-full text-xs sm:text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors py-1 cursor-pointer"
           >
             ← Back
           </button>
@@ -288,9 +288,9 @@ function OnboardingContent() {
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-4"
+          className="bg-white dark:bg-zinc-900 rounded-3xl p-5 sm:p-6 shadow-xl border border-zinc-100 dark:border-zinc-800 space-y-3.5 sm:space-y-4"
         >
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Enter Join Code</h2>
+          <h2 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white">Enter Join Code</h2>
           <Input
             placeholder="e.g. AB12XY"
             value={joinCode}
@@ -304,7 +304,7 @@ function OnboardingContent() {
           </Button>
           <button
             onClick={() => setMode('choose')}
-            className="w-full text-sm text-zinc-400 hover:text-zinc-600 transition-colors"
+            className="w-full text-xs sm:text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors py-1 cursor-pointer"
           >
             ← Back
           </button>
@@ -316,7 +316,7 @@ function OnboardingContent() {
 
 export default function OnboardingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center justify-start sm:justify-center px-4 pt-10 sm:pt-12 pb-8 sm:py-12">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
