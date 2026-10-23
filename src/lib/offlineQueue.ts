@@ -68,7 +68,7 @@ export async function flushOfflineQueue(
         if (itemPayload) {
           const { error } = await supabase.from('items').insert({
             ...itemPayload,
-            flat_id: flatId,
+            group_id: flatId,
             requested_by_id: userId,
             status: 'pending',
           });
@@ -76,7 +76,7 @@ export async function flushOfflineQueue(
             const { for_user, ...legacy } = itemPayload;
             await supabase.from('items').insert({
               ...legacy,
-              flat_id: flatId,
+              group_id: flatId,
               requested_by_id: userId,
               status: 'pending',
             });

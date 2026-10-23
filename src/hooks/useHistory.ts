@@ -14,49 +14,26 @@ export function useHistory(flatId: string) {
     if (!flatId) return;
 
     try {
-      // 1. Fetch Orders (try group_id or flat_id)
-      let ordersList: Order[] = [];
+      // 1. Fetch Orders directly by group_id
       const ordersRes = await supabase
         .from('orders')
         .select('*, buyer:profiles!orders_buyer_id_fkey(*)')
-        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
+        .eq('group_id', flatId)
         .order('created_at', { ascending: false })
         .limit(30);
 
-      if (ordersRes.error) {
-        const fallbackOrders = await supabase
-          .from('orders')
-          .select('*, buyer:profiles!orders_buyer_id_fkey(*)')
-          .eq('flat_id', flatId)
-          .order('created_at', { ascending: false })
-          .limit(30);
-        ordersList = (fallbackOrders.data as Order[]) ?? [];
-      } else {
-        ordersList = (ordersRes.data as Order[]) ?? [];
-      }
+      const ordersList: Order[] = (ordersRes.data as Order[]) ?? [];
 
-      // 2. Fetch Purchased Items (try group_id or flat_id)
-      let itemsList: any[] = [];
+      // 2. Fetch Purchased Items directly by group_id
       const itemsRes = await supabase
         .from('items')
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
-        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
+        .eq('group_id', flatId)
         .eq('status', 'purchased')
         .order('updated_at', { ascending: false })
         .limit(60);
 
-      if (itemsRes.error) {
-        const fallbackItems = await supabase
-          .from('items')
-          .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
-          .eq('flat_id', flatId)
-          .eq('status', 'purchased')
-          .order('updated_at', { ascending: false })
-          .limit(60);
-        itemsList = fallbackItems.data ?? [];
-      } else {
-        itemsList = itemsRes.data ?? [];
-      }
+      let itemsList: any[] = itemsRes.data ?? [];
 
       // 3. Resolve last_edited_by profiles for purchased items
       const editorIds = Array.from(

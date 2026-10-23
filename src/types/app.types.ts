@@ -12,7 +12,7 @@ export type ItemStatus = 'pending' | 'in_cart' | 'purchased';
 export type Platform = 'blinkit' | 'zepto' | 'instamart' | 'other';
 export type GroupType = 'flat' | 'family' | 'friends' | 'colleagues' | 'trip' | 'other';
 
-export interface Flat {
+export interface Group {
   id: string;
   name: string;
   join_code: string;
@@ -22,8 +22,8 @@ export interface Flat {
   created_at: string;
 }
 
-// Alias Flat as Group for clear semantics
-export type Group = Flat;
+// Flat alias for semantic compatibility
+export type Flat = Group;
 
 export interface GroupMember {
   id: string;
@@ -38,8 +38,8 @@ export interface Profile {
   id: string;
   name: string;
   avatar_url: string | null;
-  flat_id: string | null;
-  group_id?: string | null;
+  group_id: string | null;
+  flat_id?: string | null;
   joined_at: string;
   email?: string | null;
   role?: 'admin' | 'member';
@@ -47,8 +47,8 @@ export interface Profile {
 
 export interface GroceryItem {
   id: string;
-  flat_id: string;
-  group_id?: string;
+  group_id: string;
+  flat_id?: string;
   requested_by_id: string;
   requested_by?: Profile;
   last_edited_by_id?: string | null;
@@ -68,8 +68,8 @@ export interface GroceryItem {
 
 export interface OrderingSession {
   id: string;
-  flat_id: string;
-  group_id?: string;
+  group_id: string;
+  flat_id?: string;
   buyer_id: string;
   buyer?: Profile;
   platform: Platform;
@@ -80,8 +80,8 @@ export interface OrderingSession {
 
 export interface Order {
   id: string;
-  flat_id: string;
-  group_id?: string;
+  group_id: string;
+  flat_id?: string;
   buyer_id: string;
   buyer?: Profile;
   session_id: string | null;
@@ -95,8 +95,8 @@ export interface Order {
 export interface Settlement {
   id: string;
   order_id: string;
-  flat_id: string;
-  group_id?: string;
+  group_id: string;
+  flat_id?: string;
   ower_id: string;
   ower?: Profile;
   owed_to_id: string;

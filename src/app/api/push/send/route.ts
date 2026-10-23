@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
       try {
-        let query = supabase.from('push_subscriptions').select('*').eq('flat_id', flatId);
+        let query = supabase.from('push_subscriptions').select('*').eq('group_id', flatId);
         if (senderId) {
           query = query.neq('user_id', senderId);
         }

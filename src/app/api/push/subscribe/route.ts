@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         await supabase.from('push_subscriptions').upsert(
           {
             user_id: userId || null,
-            flat_id: flatId || null,
+            group_id: flatId || null,
             endpoint,
             p256dh,
             auth,

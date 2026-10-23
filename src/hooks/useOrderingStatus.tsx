@@ -49,21 +49,11 @@ export function useOrderingStatus(flatId: string) {
       const { data, error } = await supabase
         .from('ordering_sessions')
         .select('*, buyer:profiles!ordering_sessions_buyer_id_fkey(*)')
-        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
+        .eq('group_id', flatId)
         .eq('is_active', true)
         .maybeSingle();
 
-      let s = (data as OrderingSession) ?? null;
-
-      if (error) {
-        const fallback = await supabase
-          .from('ordering_sessions')
-          .select('*, buyer:profiles!ordering_sessions_buyer_id_fkey(*)')
-          .eq('flat_id', flatId)
-          .eq('is_active', true)
-          .maybeSingle();
-        s = (fallback.data as OrderingSession) ?? null;
-      }
+      const s = (data as OrderingSession) ?? null;
 
       // Auto-expire sessions older than 10 minutes without showing counter
       if (s && s.started_at) {
@@ -139,14 +129,14 @@ export function useOrderingStatus(flatId: string) {
     fetchSession();
 
     const channel = supabase
-      .channel(`sessions:flat_id=eq.${flatId}`)
+      .channel(`sessions:group_id=eq.${flatId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'ordering_sessions',
-          filter: `flat_id=eq.${flatId}`,
+          filter: `group_id=eq.${flatId}`,
         },
         () => fetchSession()
       )
@@ -194,11 +184,11 @@ export function useOrderingStatus(flatId: string) {
     await supabase
       .from('ordering_sessions')
       .update({ is_active: false, ended_at: new Date().toISOString() })
-      .eq('flat_id', flatId)
+      .eq('group_id', flatId)
       .eq('is_active', true);
 
     await supabase.from('ordering_sessions').insert({
-      flat_id: flatId,
+      group_id: flatId,
       buyer_id: profile.id,
       platform,
       is_active: true,
@@ -214,7 +204,7 @@ export function useOrderingStatus(flatId: string) {
     const { data: order } = await supabase
       .from('orders')
       .insert({
-        flat_id: flatId,
+        group_id: flatId,
         buyer_id: session.buyer_id,
         session_id: session.id,
         platform: session.platform,
@@ -228,7 +218,7 @@ export function useOrderingStatus(flatId: string) {
       await supabase
         .from('items')
         .update({ status: 'purchased', order_id: order.id, updated_at: new Date().toISOString() })
-        .eq('flat_id', flatId)
+        .eq('group_id', flatId)
         .eq('status', 'in_cart');
     }
 

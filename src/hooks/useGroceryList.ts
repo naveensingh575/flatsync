@@ -28,24 +28,16 @@ export function useGroceryList(flatId: string) {
     try {
       let fetchedItems: any[] = [];
 
-      // 1. Fetch items matching group_id or flat_id
+      // 1. Fetch items matching group_id
       const { data, error } = await supabase
         .from('items')
         .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
-        .or(`group_id.eq.${flatId},flat_id.eq.${flatId}`)
+        .eq('group_id', flatId)
         .in('status', ['pending', 'in_cart'])
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Fallback without .or() in case group_id column is pending migration
-        const fallbackRes = await supabase
-          .from('items')
-          .select('*, requested_by:profiles!items_requested_by_id_fkey(*)')
-          .eq('flat_id', flatId)
-          .in('status', ['pending', 'in_cart'])
-          .order('created_at', { ascending: false });
-
-        fetchedItems = fallbackRes.data || [];
+        console.error('Error fetching items for group:', error);
       } else {
         fetchedItems = data || [];
       }
@@ -88,12 +80,12 @@ export function useGroceryList(flatId: string) {
     setItems([]);
     fetchItems();
 
-    // Real-time subscription scoped to this flat's items with status monitoring
+    // Real-time subscription scoped to this group's items with status monitoring
     const channel = supabase
-      .channel(`items:flat_id=eq.${flatId}`)
+      .channel(`items:group_id=eq.${flatId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'items', filter: `flat_id=eq.${flatId}` },
+        { event: '*', schema: 'public', table: 'items', filter: `group_id=eq.${flatId}` },
         (payload: any) => {
           fetchItems();
           if (payload?.eventType === 'INSERT') {
@@ -149,7 +141,7 @@ export function useGroceryList(flatId: string) {
             id: session.user.id,
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
             avatar_url: null,
-            flat_id: flatId,
+            group_id: flatId,
             joined_at: new Date().toISOString(),
           };
           setProfile(currentProfile);
@@ -164,7 +156,7 @@ export function useGroceryList(flatId: string) {
     const tempId = 'temp-' + Date.now();
     const optimisticItem: GroceryItem = {
       id: tempId,
-      flat_id: flatId,
+      group_id: flatId,
       requested_by_id: currentProfile.id,
       requested_by: currentProfile,
       item_name: payload.item_name,
@@ -194,25 +186,25 @@ export function useGroceryList(flatId: string) {
     }
 
     try {
-      // 1. Ensure user has membership recorded for flatId in group_members and profile.flat_id
+      // 1. Ensure user has membership recorded for group in group_members and profile.group_id
       try {
         await supabase
           .from('group_members')
           .upsert({ group_id: flatId, user_id: currentProfile.id, role: 'member' }, { onConflict: 'group_id,user_id' });
       } catch (_) {}
 
-      if (currentProfile.flat_id !== flatId) {
+      if (currentProfile.group_id !== flatId) {
         try {
-          await supabase.from('profiles').update({ flat_id: flatId }).eq('id', currentProfile.id);
+          await supabase.from('profiles').update({ group_id: flatId }).eq('id', currentProfile.id);
         } catch (_) {}
       }
 
-      // 2. Perform insert
+      // 2. Perform insert directly to items with group_id
       const { data, error } = await supabase
         .from('items')
         .insert({
           ...payload,
-          flat_id: flatId,
+          group_id: flatId,
           requested_by_id: currentProfile.id,
           status: 'pending',
         })
@@ -291,7 +283,7 @@ export function useGroceryList(flatId: string) {
             id: session.user.id,
             name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
             avatar_url: null,
-            flat_id: flatId,
+            group_id: flatId,
             joined_at: new Date().toISOString(),
           };
           setProfile(currentProfile);
@@ -305,7 +297,7 @@ export function useGroceryList(flatId: string) {
 
     const tempItems: GroceryItem[] = payloads.map((payload, idx) => ({
       id: `temp-${Date.now()}-${idx}`,
-      flat_id: flatId,
+      group_id: flatId,
       requested_by_id: currentProfile.id,
       requested_by: currentProfile,
       for_user: payload.for_user || null,
@@ -332,7 +324,7 @@ export function useGroceryList(flatId: string) {
         quantity: p.quantity || null,
         note: p.note || null,
         for_user: p.for_user || null,
-        flat_id: flatId,
+        group_id: flatId,
         requested_by_id: currentProfile.id,
         status: 'pending',
       }));

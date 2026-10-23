@@ -33,7 +33,8 @@ export function useAuth() {
             id: session.user.id,
             name: resolvedName,
             avatar_url: userProfile?.avatar_url || null,
-            flat_id: userProfile?.flat_id || null,
+            group_id: userProfile?.group_id || userProfile?.flat_id || null,
+            flat_id: userProfile?.group_id || userProfile?.flat_id || null,
             joined_at: userProfile?.joined_at || new Date().toISOString(),
           };
 
@@ -70,7 +71,8 @@ export function useAuth() {
           id: session.user.id,
           name: resolvedName,
           avatar_url: userProfile?.avatar_url || null,
-          flat_id: userProfile?.flat_id || null,
+          group_id: userProfile?.group_id || userProfile?.flat_id || null,
+          flat_id: userProfile?.group_id || userProfile?.flat_id || null,
           joined_at: userProfile?.joined_at || new Date().toISOString(),
         });
       } else {
@@ -100,11 +102,14 @@ export function useAuth() {
         authData.user.email?.split('@')[0] ||
         'User';
 
+      const userPrimaryGroup = userProfile?.group_id || userProfile?.flat_id || null;
+
       setProfile({
         id: authData.user.id,
         name: resolvedName,
         avatar_url: userProfile?.avatar_url || null,
-        flat_id: userProfile?.flat_id || null,
+        group_id: userPrimaryGroup,
+        flat_id: userPrimaryGroup,
         joined_at: userProfile?.joined_at || new Date().toISOString(),
       });
 
@@ -118,13 +123,12 @@ export function useAuth() {
 
         if (memberRows && memberRows.length > 0 && memberRows[0].group_id) {
           targetFlatId = memberRows[0].group_id;
-        } else if (userProfile?.flat_id) {
-          targetFlatId = userProfile.flat_id;
+        } else if (userPrimaryGroup) {
+          targetFlatId = userPrimaryGroup;
         }
       } catch (err) {
-        // Fallback to profile flat_id
-        if (userProfile?.flat_id) {
-          targetFlatId = userProfile.flat_id;
+        if (userPrimaryGroup) {
+          targetFlatId = userPrimaryGroup;
         }
       }
     }
@@ -182,6 +186,7 @@ export function useAuth() {
         name: trimmedName,
         email: cleanEmail,
         avatar_url: null,
+        group_id: null,
         flat_id: null,
         joined_at: new Date().toISOString(),
       };

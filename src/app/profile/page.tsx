@@ -21,15 +21,16 @@ export default async function ProfileFallbackPage() {
       if (memberRow?.group_id) {
         target = `/flat/${memberRow.group_id}/profile`;
       } else {
-        // 2. Fallback to legacy profiles.flat_id
+        // 2. Check profile group_id
         const { data: profile } = await supabase
           .from('profiles')
-          .select('flat_id')
+          .select('group_id, flat_id')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profile?.flat_id) {
-          target = `/flat/${profile.flat_id}/profile`;
+        const resolvedGroupId = profile?.group_id || profile?.flat_id;
+        if (resolvedGroupId) {
+          target = `/flat/${resolvedGroupId}/profile`;
         } else {
           target = '/onboarding';
         }

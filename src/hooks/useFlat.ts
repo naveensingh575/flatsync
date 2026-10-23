@@ -49,9 +49,10 @@ export function useFlat(flatId?: string) {
         }
       } catch (_) {}
 
-      // 2. Always include profile.flat_id if present
-      if (profile?.flat_id) {
-        candidateGroupIds.add(profile.flat_id);
+      // 2. Always include profile.group_id / profile.flat_id if present
+      const userPrimaryGroup = profile?.group_id || profile?.flat_id;
+      if (userPrimaryGroup) {
+        candidateGroupIds.add(userPrimaryGroup);
       }
 
       // 3. Always include currently active flatId if provided
@@ -71,13 +72,13 @@ export function useFlat(flatId?: string) {
       try {
         const { data: userItems } = await supabase
           .from('items')
-          .select('flat_id')
+          .select('group_id')
           .eq('requested_by_id', currentUserId)
           .limit(20);
 
         if (userItems) {
           userItems.forEach((i: any) => {
-            if (i.flat_id) candidateGroupIds.add(i.flat_id);
+            if (i.group_id) candidateGroupIds.add(i.group_id);
           });
         }
       } catch (_) {}
@@ -85,48 +86,24 @@ export function useFlat(flatId?: string) {
       const idsToFetch = Array.from(candidateGroupIds);
       let groups: Flat[] = [];
 
-      // 6. Fetch full details for all discovered groups (try groups first, fallback to flats)
+      // 6. Fetch full details for all discovered groups directly from groups table
       if (idsToFetch.length > 0) {
-        let fetchedGroups: any = null;
         try {
           const res = await supabase.from('groups').select('*').in('id', idsToFetch);
-          if (!res.error && res.data && res.data.length > 0) {
-            fetchedGroups = res.data;
+          if (!res.error && res.data) {
+            groups = res.data as Flat[];
           }
         } catch (_) {}
-
-        if (!fetchedGroups || fetchedGroups.length === 0) {
-          try {
-            const res = await supabase.from('flats').select('*').in('id', idsToFetch);
-            if (!res.error && res.data) {
-              fetchedGroups = res.data;
-            }
-          } catch (_) {}
-        }
-
-        if (fetchedGroups && fetchedGroups.length > 0) {
-          groups = fetchedGroups as Flat[];
-        }
       }
 
-      // Fallback: If still empty, check groups/flats directly by profile.flat_id
-      if (groups.length === 0 && profile?.flat_id) {
-        let directGroup: any = null;
+      // Fallback: If still empty, check groups directly by profile primary group
+      if (groups.length === 0 && userPrimaryGroup) {
         try {
-          const res = await supabase.from('groups').select('*').eq('id', profile.flat_id).maybeSingle();
-          if (res.data) directGroup = res.data;
+          const res = await supabase.from('groups').select('*').eq('id', userPrimaryGroup).maybeSingle();
+          if (res.data) {
+            groups = [res.data as Flat];
+          }
         } catch (_) {}
-
-        if (!directGroup) {
-          try {
-            const res = await supabase.from('flats').select('*').eq('id', profile.flat_id).maybeSingle();
-            if (res.data) directGroup = res.data;
-          } catch (_) {}
-        }
-
-        if (directGroup) {
-          groups = [directGroup as Flat];
-        }
       }
 
       // 7. Deduplicate groups by ID
@@ -330,20 +307,13 @@ export function useFlat(flatId?: string) {
     }
 
     try {
-      // 1. Try deleting from groups first, fallback to flats
+      // 1. Delete from groups directly
       const { error: groupErr } = await supabase
         .from('groups')
         .delete()
         .eq('id', targetGroupId);
 
-      if (groupErr) {
-        const { error: flatErr } = await supabase
-          .from('flats')
-          .delete()
-          .eq('id', targetGroupId);
-
-        if (flatErr) throw flatErr;
-      }
+      if (groupErr) throw groupErr;
 
       // Also clean up junction entries
       await supabase
@@ -351,12 +321,13 @@ export function useFlat(flatId?: string) {
         .delete()
         .eq('group_id', targetGroupId);
 
-      if (profile.flat_id === targetGroupId) {
+      const userCurrentGroup = profile.group_id || profile.flat_id;
+      if (userCurrentGroup === targetGroupId) {
         const remaining = userGroups.filter((g) => g.id !== targetGroupId);
         const nextId = remaining.length > 0 ? remaining[0].id : null;
         await supabase
           .from('profiles')
-          .update({ flat_id: nextId })
+          .update({ group_id: nextId })
           .eq('id', profile.id);
       }
 
@@ -380,22 +351,15 @@ export function useFlat(flatId?: string) {
     isFetchingFlatRef.current = true;
 
     try {
-      // 1. Fetch group details (try groups first, fallback to flats)
+      // 1. Fetch group details directly from groups table
       let resolvedFlat: Flat | null = null;
       try {
         const res = await supabase.from('groups').select('*').eq('id', flatId).maybeSingle();
         if (res.data) resolvedFlat = res.data as Flat;
       } catch (_) {}
 
-      if (!resolvedFlat) {
-        try {
-          const res = await supabase.from('flats').select('*').eq('id', flatId).maybeSingle();
-          if (res.data) resolvedFlat = res.data as Flat;
-        } catch (_) {}
-      }
-
-      const [legacyMembersRes, junctionRows] = await Promise.all([
-        supabase.from('profiles').select('*').eq('flat_id', flatId),
+      const [groupMembersRes, junctionRows] = await Promise.all([
+        supabase.from('profiles').select('*').eq('group_id', flatId),
         supabase.from('group_members').select('user_id, role').eq('group_id', flatId),
       ]);
       if (!resolvedFlat && flatId) {
@@ -430,8 +394,8 @@ export function useFlat(flatId?: string) {
         if (r.user_id) roleMap.set(r.user_id, r.role || 'member');
       });
 
-      // 1. Add legacy members from profiles.flat_id
-      ((legacyMembersRes.data as Profile[]) ?? []).forEach((m) => {
+      // 1. Add members from profiles with this group_id
+      ((groupMembersRes.data as Profile[]) ?? []).forEach((m) => {
         if (m && m.id) {
           const isCreator = resolvedFlat?.created_by === m.id;
           memberMap.set(m.id, {

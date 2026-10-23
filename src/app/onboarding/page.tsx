@@ -64,10 +64,9 @@ function OnboardingContent() {
     setLoading(true);
     try {
       const code = generateJoinCode();
-      let group: any = null;
 
-      // 1. Try 'groups' table first (new schema)
-      const tryGroups = await supabase
+      // Insert directly into 'groups' table
+      const { data: group, error: createErr } = await supabase
         .from('groups')
         .insert({
           name: groupName.trim(),
@@ -79,84 +78,33 @@ function OnboardingContent() {
         .select()
         .single();
 
-      if (!tryGroups.error && tryGroups.data) {
-        group = tryGroups.data;
-      } else {
-        // Fallback: try 'groups' without created_by if column doesn't exist
-        const tryGroupsNoCreator = await supabase
-          .from('groups')
-          .insert({
-            name: groupName.trim(),
-            join_code: code,
-            group_type: selectedType,
-            icon: activeGroupType.emoji,
-          })
-          .select()
-          .single();
-
-        if (!tryGroupsNoCreator.error && tryGroupsNoCreator.data) {
-          group = tryGroupsNoCreator.data;
-        } else {
-          // Fallback: try 'flats' table (legacy schema)
-          const tryFlats = await supabase
-            .from('flats')
-            .insert({
-              name: groupName.trim(),
-              join_code: code,
-              group_type: selectedType,
-              icon: activeGroupType.emoji,
-              created_by: profile.id,
-            })
-            .select()
-            .single();
-
-          if (!tryFlats.error && tryFlats.data) {
-            group = tryFlats.data;
-          } else {
-            // Fallback: try 'flats' without created_by
-            const tryFlatsNoCreator = await supabase
-              .from('flats')
-              .insert({
-                name: groupName.trim(),
-                join_code: code,
-                group_type: selectedType,
-                icon: activeGroupType.emoji,
-              })
-              .select()
-              .single();
-
-            if (tryFlatsNoCreator.error) throw tryFlatsNoCreator.error;
-            group = tryFlatsNoCreator.data;
-          }
-        }
-      }
-
-      if (!group || !group.id) {
-        throw new Error('Failed to create group');
+      if (createErr || !group?.id) {
+        throw createErr || new Error('Failed to create group');
       }
 
       // 1. Preserve previous group in group_members if present
-      if (profile.flat_id && profile.flat_id !== group.id) {
+      const userPrevGroup = profile.group_id || profile.flat_id;
+      if (userPrevGroup && userPrevGroup !== group.id) {
         try {
           await supabase.from('group_members').upsert(
-            { group_id: profile.flat_id, user_id: profile.id, role: 'member' },
+            { group_id: userPrevGroup, user_id: profile.id, role: 'member' },
             { onConflict: 'group_id,user_id' }
           );
         } catch (_) {}
       }
 
-      // 2. Add new group to group_members junction table
+      // 2. Add creator to group_members as admin
       await supabase.from('group_members').upsert(
         { group_id: group.id, user_id: profile.id, role: 'admin' },
         { onConflict: 'group_id,user_id' }
       );
 
-      // 3. Update legacy profile.flat_id as default
-      await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+      // 3. Update profile.group_id as default
+      await supabase.from('profiles').update({ group_id: group.id }).eq('id', profile.id);
 
       // 4. Update local app store immediately
       setUserGroups([...userGroups.filter((g) => g.id !== group.id), group]);
-      setProfile({ ...profile, flat_id: group.id });
+      setProfile({ ...profile, group_id: group.id, flat_id: group.id });
 
       toast.success(`${group.name} created! Code: ${code}`);
       router.push(`/flat/${group.id}`);
@@ -174,39 +122,22 @@ function OnboardingContent() {
     if (!profile?.id) { toast.error('Please log in first'); return; }
     setLoading(true);
     try {
-      let group: any = null;
-
-      // 1. Try 'groups' table first
-      const { data: groupData, error: groupErr } = await supabase
+      // Query 'groups' table directly
+      const { data: group, error: groupErr } = await supabase
         .from('groups')
         .select('*')
         .eq('join_code', code)
         .maybeSingle();
 
-      if (!groupErr && groupData) {
-        group = groupData;
-      } else {
-        // Fallback: try 'flats' table
-        const { data: flatData, error: flatErr } = await supabase
-          .from('flats')
-          .select('*')
-          .eq('join_code', code)
-          .maybeSingle();
-
-        if (flatData) {
-          group = flatData;
-        } else if (flatErr) {
-          throw flatErr;
-        }
-      }
-
+      if (groupErr) throw groupErr;
       if (!group) throw new Error('Invalid code. Check with group members!');
 
       // 1. Preserve previous group in group_members if present
-      if (profile.flat_id && profile.flat_id !== group.id) {
+      const userPrevGroup = profile.group_id || profile.flat_id;
+      if (userPrevGroup && userPrevGroup !== group.id) {
         try {
           await supabase.from('group_members').upsert(
-            { group_id: profile.flat_id, user_id: profile.id, role: 'member' },
+            { group_id: userPrevGroup, user_id: profile.id, role: 'member' },
             { onConflict: 'group_id,user_id' }
           );
         } catch (_) {}
@@ -218,12 +149,12 @@ function OnboardingContent() {
         { onConflict: 'group_id,user_id' }
       );
 
-      // 3. Update legacy profile.flat_id
-      await supabase.from('profiles').update({ flat_id: group.id }).eq('id', profile.id);
+      // 3. Update profile.group_id
+      await supabase.from('profiles').update({ group_id: group.id }).eq('id', profile.id);
 
       // 4. Update local app store immediately
       setUserGroups([...userGroups.filter((g) => g.id !== group.id), group]);
-      setProfile({ ...profile, flat_id: group.id });
+      setProfile({ ...profile, group_id: group.id, flat_id: group.id });
 
       toast.success(`Joined ${group.name}! 🎉`);
       router.push(`/flat/${group.id}`);

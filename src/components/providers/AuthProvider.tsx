@@ -33,11 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             session.user.email?.split('@')[0] ||
             'User';
 
+          const userGroupId = userProfile?.group_id || userProfile?.flat_id || profile?.group_id || profile?.flat_id || null;
           const resolvedProfile: Profile = {
             id: session.user.id,
             name: resolvedName,
             avatar_url: userProfile?.avatar_url || null,
-            flat_id: userProfile?.flat_id || profile?.flat_id || null,
+            group_id: userGroupId,
+            flat_id: userGroupId,
             joined_at: userProfile?.joined_at || new Date().toISOString(),
           };
 
@@ -81,11 +83,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             session.user.email?.split('@')[0] ||
             'User';
 
+          const userGroupId = userProfile?.group_id || userProfile?.flat_id || profile?.group_id || profile?.flat_id || null;
           setProfile({
             id: session.user.id,
             name: resolvedName,
             avatar_url: userProfile?.avatar_url || null,
-            flat_id: userProfile?.flat_id || profile?.flat_id || null,
+            group_id: userGroupId,
+            flat_id: userGroupId,
             joined_at: userProfile?.joined_at || new Date().toISOString(),
           });
         } catch (_) {}
